@@ -3,59 +3,71 @@ import { decode } from '../src/parse'
 
 describe('language TestSuit', () => {
   context('select expression', () => {
-    context('single table', () => {
-      function test(options: {
-        single: boolean
-        fields: string[]
-        multiline: boolean
-      }) {
-        let name =
-          `should parse` +
-          ' ' +
-          (options.multiline ? 'multi-line' : 'inline') +
-          ' ' +
-          (options.fields.length > 1 ? 'multi-field' : 'single-field') +
-          ' ' +
-          (options.single ? 'single-row' : 'multi-row') +
-          ' ' +
-          `select expression`
-        let [open, close] = options.single ? '{}' : '[]'
-        let query = `select user ${open}`
-        if (options.multiline) {
-          query += '\n  '
-        }
-        if (options.multiline) {
-          query += options.fields.join('\n  ')
-        } else {
-          query += options.fields.join(', ')
-        }
-        if (options.multiline) {
-          query += '\n'
-        }
-        query += close
-        let fields = options.fields.map(name => ({ type: 'column', name }))
-        console.log(`> it ${name}:`)
-        console.log(query)
-        it(name, () => {
-          let ast = decode(query)
-          expect(ast).to.deep.equals({
-            type: 'select',
-            table: {
-              type: 'table',
-              single: options.single,
-              name: 'user',
-              fields,
-            },
-          })
+    context('single/multie row', () => {
+      it('should parse multi-row select expression', () => {
+        expect(decode(`select user [ id ]`)).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'user',
+            single: false,
+            fields: [{ type: 'column', name: 'id' }],
+          },
         })
-      }
-      for (let fields of [['id'], ['id', 'username']]) {
-        for (let multiline of [true, false]) {
-          for (let single of [true, false]) {
-            test({ single, fields, multiline })
-          }
-        }
-      }
+      })
+
+      it('should parse single-row select expression', () => {
+        expect(decode(`select user { id }`)).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'user',
+            single: true,
+            fields: [{ type: 'column', name: 'id' }],
+          },
+        })
+      })
+    })
+
+    context('inline/multi-line expression', () => {
+      it('should parse inline expression', () => {
+        expect(decode(`select user { id, nickname }`)).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'user',
+            single: true,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'nickname' },
+            ],
+          },
+        })
+      })
+
+      it('should parse multi-line expression', () => {
+        expect(
+          decode(
+            `
+select user {
+  id
+  nickname
+}
+`,
+          ),
+        ).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'user',
+            single: true,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'nickname' },
+            ],
+          },
+        })
+      })
     })
   })
 })
