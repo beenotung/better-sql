@@ -1,6 +1,6 @@
 export function decode(text: string) {
-  let tokens = tokenize(text)
-  let root = parse(tokens)
+  const tokens = tokenize(text)
+  const root = parse(tokens)
   return root
 }
 
@@ -19,11 +19,11 @@ export namespace Token {
   export type Any = Word | Symbol | Newline
 }
 
-let wordRegex = /^[a-zA-Z_]+/
-let symbols = Object.fromEntries('{}[]()?<>=:'.split('').map(c => [c, true]))
+const wordRegex = /^[a-zA-Z_]+/
+const symbols = Object.fromEntries('{}[]()?<>=:'.split('').map(c => [c, true]))
 
 export function tokenize(text: string): Token.Any[] {
-  let tokens: Token.Any[] = []
+  const tokens: Token.Any[] = []
   text
     .trim()
     .split('\n')
@@ -34,16 +34,16 @@ export function tokenize(text: string): Token.Any[] {
       let rest = line
       for (;;) {
         rest = rest.trim()
-        let char = rest[0]
+        const char = rest[0]
         if (!char) return
         if (char in symbols) {
           rest = rest.slice(1)
           tokens.push({ type: 'symbol', value: char })
           continue
         }
-        let match = rest.match(wordRegex)
+        const match = rest.match(wordRegex)
         if (match) {
-          let value = match[0]
+          const value = match[0]
           rest = rest.slice(value.length + 1)
           tokens.push({ type: 'word', value })
           continue
@@ -59,7 +59,7 @@ export function parse(tokens: Token.Any[]): AST.Expression {
   if (tokens.length === 0) {
     throw new Error('empty tokens')
   }
-  let token = tokens[0]
+  const token = tokens[0]
   if (token.type === 'word' && token.value === 'select') {
     return {
       type: 'select',
@@ -76,7 +76,7 @@ function parseTable(tokens: Token.Any[]): AST.Table {
     if (rest.length == 0) {
       throw new Error('missing table name')
     }
-    let token = rest[0]
+    const token = rest[0]
     if (token.type === 'newline') {
       rest = rest.slice(1)
       continue
@@ -88,7 +88,7 @@ function parseTable(tokens: Token.Any[]): AST.Table {
     throw new Error('expect table name, got: ' + JSON.stringify(token))
   }
 
-  let fields: AST.Field[] = []
+  const fields: AST.Field[] = []
   // for (;;) {}
 
   return { type: 'table', name, fields }

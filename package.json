@@ -1,17 +1,74 @@
 {
   "name": "better-sql-lang",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "tsc --noEmit",
-    "build": "tsc -p ."
-  },
+  "sideEffects": false,
+  "description": "TODO: add desc",
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "Beeno Tung",
+    "email": "aabbcc1241@yahoo.com.hk",
+    "url": "https://beeno-tung.surge.sh"
+  },
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beenotung/better-sql.git"
+  },
+  "homepage": "https://github.com/beenotung/better-sql#readme",
+  "bugs": {
+    "url": "https://github.com/beenotung/better-sql/issues"
+  },
+  "main": "dist/cjs/index.js",
+  "types": "dist/cjs/index.d.ts",
+  "module": "dist/esm/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "run-s clean tsc",
+    "prepare": "run-p prepare:*",
+    "prepare:tslib": "rimraf node_modules/@beenotung/tslib/index.*",
+    "clean": "rimraf dist",
+    "format": "run-s format:*",
+    "format:prettier": "prettier --write .",
+    "format:json": "format-json-cli",
+    "format:eslint": "eslint --ext .ts --fix .",
+    "tsc": "run-p tsc:*",
+    "tsc:cjs": "tsc -p tsconfig.cjs.json",
+    "tsc:esm": "tsc -p tsconfig.esm.json",
+    "test": "run-s format tsc test:ts mocha",
+    "test:ts": "ts-node test/index.ts",
+    "mocha": "ts-mocha \"{src,test}/**/*.spec.ts\"",
+    "coverage": "nyc ts-mocha --reporter=progress \"{src,test}/**/*.spec.ts\"",
+    "report:update": "nyc --reporter=lcov ts-mocha --reporter=progress \"{src,test}/**/*.spec.ts\"",
+    "report:open": "open-cli coverage/lcov-report/index.html",
+    "report": "run-s report:update report:open",
+    "prepublishOnly": "run-s test build"
+  },
+  "dependencies": {
+    "@beenotung/tslib": "^20.1.3"
+  },
   "devDependencies": {
-    "@types/node": "^18.0.4",
+    "@types/chai": "^4.3.1",
+    "@types/mocha": "8",
+    "@types/node": "*",
+    "@types/sinon": "^10.0.11",
+    "@typescript-eslint/eslint-plugin": "^5.30.7",
+    "@typescript-eslint/parser": "^5.30.7",
+    "chai": "^4.3.6",
+    "eslint": "^8.20.0",
+    "format-json-cli": "^1.0.1",
+    "mocha": "8",
+    "npm-run-all": "^4.1.5",
+    "nyc": "^15.1.0",
+    "open-cli": "^7.0.1",
+    "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
+    "sinon": "^14.0.0",
+    "ts-mocha": "8",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.7.4"

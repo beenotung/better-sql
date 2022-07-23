@@ -1,4 +1,4 @@
-import { decode } from "../src/parse"
+import { decode } from '../src/parse'
 
 let text = `
 select post [
