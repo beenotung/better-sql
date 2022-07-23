@@ -20,7 +20,7 @@ export namespace Token {
 }
 
 const wordRegex = /^[a-zA-Z_]+/
-const symbols = Object.fromEntries('{}[]()?<>=:'.split('').map(c => [c, true]))
+const symbols = Object.fromEntries('{}[]()?<>=:,'.split('').map(c => [c, true]))
 
 export function tokenize(text: string): Token.Any[] {
   const tokens: Token.Any[] = []
@@ -44,7 +44,7 @@ export function tokenize(text: string): Token.Any[] {
         const match = rest.match(wordRegex)
         if (match) {
           const value = match[0]
-          rest = rest.slice(value.length + 1)
+          rest = rest.slice(value.length)
           tokens.push({ type: 'word', value })
           continue
         }
@@ -53,6 +53,27 @@ export function tokenize(text: string): Token.Any[] {
       }
     })
   return tokens.slice(1)
+}
+
+export namespace AST {
+  export type Expression = Select
+  export type Select = {
+    type: 'select'
+    table: Table
+  }
+  export type Table = {
+    type: 'table'
+    name: string
+    single: boolean
+    join?: string
+    fields: Field[]
+  }
+  export type Field = Column | Table
+  export type Column = {
+    type: 'column'
+    name: string
+    alias?: string
+  }
 }
 
 export function parse(tokens: Token.Any[]): AST.Expression {
@@ -70,11 +91,79 @@ export function parse(tokens: Token.Any[]): AST.Expression {
 }
 
 function parseTable(tokens: Token.Any[]): AST.Table {
-  let name: string
+  let rest = tokens
+
+  let result = parseWord(rest, 'table name')
+  const tableName = result.value
+  rest = result.rest
+
+  result = parseSymbol(rest, 'table open bracket')
+  const openBracket = result.value
+  rest = result.rest
+  let single: boolean
+  let closeBracket: string
+
+  switch (openBracket) {
+    case '[': {
+      single = false
+      closeBracket = ']'
+      break
+    }
+    case '{': {
+      single = true
+      closeBracket = '}'
+      break
+    }
+    default: {
+      throw new Error(
+        `expect "[" or "{" as table open bracket, got: ${JSON.stringify(
+          openBracket,
+        )}`,
+      )
+    }
+  }
+
+  const fields: AST.Field[] = []
+  for (;;) {
+    if (rest.length === 0) {
+      throw new Error(`missing table close bracket "${closeBracket}"`)
+    }
+
+    const token = rest[0]
+
+    if (token.type === 'symbol' && token.value === closeBracket) {
+      rest = rest.slice(1)
+      break
+    }
+
+    if (token.type === 'word') {
+      const fieldName = token.value
+      rest = rest.slice(1)
+      fields.push({ type: 'column', name: fieldName })
+      continue
+    }
+
+    if (
+      token.type === 'newline' ||
+      (token.type === 'symbol' && token.value === ',')
+    ) {
+      rest = rest.slice(1)
+      continue
+    }
+
+    throw new Error(
+      `expected table fields, got token: ${JSON.stringify(token)}`,
+    )
+  }
+
+  return { type: 'table', name: tableName, single, fields }
+}
+
+function parseWord(tokens: Token.Any[], name: string) {
   let rest = tokens
   for (;;) {
-    if (rest.length == 0) {
-      throw new Error('missing table name')
+    if (rest.length === 0) {
+      throw new Error(`missing ${name}`)
     }
     const token = rest[0]
     if (token.type === 'newline') {
@@ -82,37 +171,26 @@ function parseTable(tokens: Token.Any[]): AST.Table {
       continue
     }
     if (token.type === 'word') {
-      name = token.value
-      break
+      return { value: token.value, rest: rest.slice(1) }
     }
-    throw new Error('expect table name, got: ' + JSON.stringify(token))
-  }
-
-  const fields: AST.Field[] = []
-  // for (;;) {}
-
-  return { type: 'table', name, fields }
-}
-
-export namespace AST {
-  export type Expression = Select
-  export type Select = {
-    type: 'select'
-    table: Table
-  }
-  export type Table = {
-    type: 'table'
-    name: string
-    fields: Field[]
-  }
-  export type Field = Column | Table
-  export type Column = {
-    type: 'column'
-    name: string
-    alias: string | null
+    throw new Error(`expect ${name}, got: ${JSON.stringify(token)}`)
   }
 }
 
-function parseSelect(text: string) {}
-
-function parseWord(text: string) {}
+function parseSymbol(tokens: Token.Any[], name: string) {
+  let rest = tokens
+  for (;;) {
+    if (rest.length === 0) {
+      throw new Error(`missing ${name}`)
+    }
+    const token = rest[0]
+    if (token.type === 'newline') {
+      rest = rest.slice(1)
+      continue
+    }
+    if (token.type === 'symbol') {
+      return { value: token.value, rest: rest.slice(1) }
+    }
+    throw new Error(`expect ${name} but got: ${JSON.stringify(token)}`)
+  }
+}
