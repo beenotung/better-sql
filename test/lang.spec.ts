@@ -182,7 +182,7 @@ select post {
         })
       })
 
-      it('should parse inline column alias', () => {
+      it('should parse column alias in nested select', () => {
         expect(
           decode(`select post { id, title as post_title, author_id }`),
         ).to.deep.equals({
@@ -195,6 +195,39 @@ select post {
               { type: 'column', name: 'id' },
               { type: 'column', name: 'title', alias: 'post_title' },
               { type: 'column', name: 'author_id' },
+            ],
+          },
+        })
+      })
+
+      it('should parse inline column alias', () => {
+        expect(
+          decode(
+            `
+select post {
+  id
+  title as post_title
+  author {
+    nickname as author
+  }
+}
+`,
+          ),
+        ).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: true,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title', alias: 'post_title' },
+              {
+                type: 'table',
+                name: 'author',
+                single: true,
+                fields: [{ type: 'column', name: 'nickname', alias: 'author' }],
+              },
             ],
           },
         })
