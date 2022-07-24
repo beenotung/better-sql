@@ -154,5 +154,33 @@ select cart {
         })
       })
     })
+
+    context('select column with alias', () => {
+      it('should parse multi-line column alias', () => {
+        expect(
+          decode(
+            `
+select post {
+  id
+  title as post_title
+  author_id
+}
+`,
+          ),
+        ).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: true,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title', alias: 'post_title' },
+              { type: 'column', name: 'author_id' },
+            ],
+          },
+        })
+      })
+    })
   })
 })

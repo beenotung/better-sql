@@ -116,6 +116,14 @@ function parseFields(tokens: Token.Any[], tableName: string) {
 
   const fields: AST.Field[] = []
 
+  function popField(message: string) {
+    const field = fields.pop()
+    if (!field) {
+      throw new Error(message)
+    }
+    return field
+  }
+
   for (;;) {
     if (rest.length === 0) {
       throw new Error(
@@ -131,9 +139,20 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     }
 
     if (token.type === 'word') {
-      const fieldName = token.value
+      const value = token.value
       rest = rest.slice(1)
-      fields.push({ type: 'column', name: fieldName })
+      if (value === 'as') {
+        const field = popField(`missing field name before "as" alias`)
+        if (field.type === 'table') {
+          throw new Error(`expected "as" alias after table "${field.name}"`)
+        }
+        const wordResult = parseWord(rest, `alias of column "${field.name}"`)
+        rest = wordResult.rest
+        field.alias = wordResult.value
+        fields.push(field)
+        continue
+      }
+      fields.push({ type: 'column', name: value })
       continue
     }
 
@@ -146,12 +165,9 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     }
 
     if (isOpenBracket(token)) {
-      const field = fields.pop()
-      if (!field) {
-        throw new Error(
-          `missing relation table name in fields of table "${tableName}"`,
-        )
-      }
+      const field = popField(
+        `missing relation table name in fields of table "${tableName}"`,
+      )
       const fieldsResult = parseFields(rest, field.name)
       rest = fieldsResult.rest
       fields.push({
