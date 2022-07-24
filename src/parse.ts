@@ -64,6 +64,7 @@ export namespace AST {
   export type Table = {
     type: 'table'
     name: string
+    alias?: string
     single: boolean
     join?: string
     fields: Field[]
@@ -97,11 +98,28 @@ function parseTable(tokens: Token.Any[]): AST.Table {
   const tableName = tableNameResult.value
   rest = tableNameResult.rest
 
+  if (rest.length === 0) {
+    throw new Error(`unexpected termination after table name "${tableName}"`)
+  }
+
+  let alias: string | undefined
+  let token = rest[0]
+  if (token.type === 'word' && token.value === 'as') {
+    rest = rest.slice(1)
+    let aliasResult = parseWord(rest, `alias of table "${tableName}"`)
+    rest = aliasResult.rest
+    alias = aliasResult.value
+  }
+
   const fieldResult = parseFields(rest, tableName)
   rest = fieldResult.rest
   const { single, fields } = fieldResult
 
-  return { type: 'table', name: tableName, single, fields }
+  let table: AST.Table = { type: 'table', name: tableName, single, fields }
+  if (alias) {
+    table.alias = alias
+  }
+  return table
 }
 
 function parseFields(tokens: Token.Any[], tableName: string) {
@@ -170,12 +188,16 @@ function parseFields(tokens: Token.Any[], tableName: string) {
       )
       const fieldsResult = parseFields(rest, field.name)
       rest = fieldsResult.rest
-      fields.push({
+      let table: AST.Table = {
         type: 'table',
         name: field.name,
         single: fieldsResult.single,
         fields: fieldsResult.fields,
-      })
+      }
+      if (field.alias) {
+        table.alias = field.alias
+      }
+      fields.push(table)
       continue
     }
 

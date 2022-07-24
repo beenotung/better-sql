@@ -1,7 +1,7 @@
 import { decode } from '../src/parse'
 
 let text = `
-select post [
+select thread as post [
 	id as post_id
 	title
 	author_id
@@ -28,7 +28,7 @@ select
 , author.avatar
 , post.type_id
 , post_type.name
-from post
+from thread as post
 inner join user as author on author.id = post.author_id
 inner join post_type on post_type.id = post.type_id
 where post.created_at >= :since

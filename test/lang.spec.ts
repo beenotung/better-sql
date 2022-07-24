@@ -233,5 +233,59 @@ select post {
         })
       })
     })
+
+    context('join table with alias', () => {
+      it('should parse table name alias', () => {
+        expect(decode(`select thread as post { id }`)).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'thread',
+            single: true,
+            alias: 'post',
+            fields: [{ type: 'column', name: 'id' }],
+          },
+        })
+      })
+
+      it('should parse nested table name alias', () => {
+        expect(
+          decode(`
+select thread as post {
+  id
+  user as author {
+    username
+    id as author_id
+    is_admin
+  }
+  title
+}
+`),
+        ).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'thread',
+            single: true,
+            alias: 'post',
+            fields: [
+              { type: 'column', name: 'id' },
+              {
+                type: 'table',
+                name: 'user',
+                single: true,
+                alias: 'author',
+                fields: [
+                  { type: 'column', name: 'username' },
+                  { type: 'column', name: 'id', alias: 'author_id' },
+                  { type: 'column', name: 'is_admin' },
+                ],
+              },
+              { type: 'column', name: 'title' },
+            ],
+          },
+        })
+      })
+    })
   })
 })
