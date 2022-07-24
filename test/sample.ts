@@ -17,18 +17,21 @@ select post [
 
 let res = decode(text)
 
-console.log(res)
-/* sql */ ;`
+console.log('decoded:', res)
+
+let sql = /* sql */ `
 select
   post.id as post_id
 , post.title
 , post.author_id
-, user.nickname
-, user.avatar
+, author.nickname
+, author.avatar
 , post.type_id
-, type.name
+, post_type.name
 from post
-inner join user on user.id = post.author_id
-inner join type on type.id = post.type_id
+inner join user as author on author.id = post.author_id
+inner join post_type on post_type.id = post.type_id
 where post.created_at >= :since
 `
+
+console.log('sql:', sql)
