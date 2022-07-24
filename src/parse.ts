@@ -93,40 +93,34 @@ export function parse(tokens: Token.Any[]): AST.Expression {
 function parseTable(tokens: Token.Any[]): AST.Table {
   let rest = tokens
 
-  let result = parseWord(rest, 'table name')
-  const tableName = result.value
-  rest = result.rest
+  const tableNameResult = parseWord(rest, 'table name')
+  const tableName = tableNameResult.value
+  rest = tableNameResult.rest
 
-  result = parseSymbol(rest, 'table open bracket')
-  const openBracket = result.value
-  rest = result.rest
-  let single: boolean
-  let closeBracket: string
+  const fieldResult = parseFields(rest, tableName)
+  rest = fieldResult.rest
+  const { single, fields } = fieldResult
 
-  switch (openBracket) {
-    case '[': {
-      single = false
-      closeBracket = ']'
-      break
-    }
-    case '{': {
-      single = true
-      closeBracket = '}'
-      break
-    }
-    default: {
-      throw new Error(
-        `expect "[" or "{" as table open bracket, got: ${JSON.stringify(
-          openBracket,
-        )}`,
-      )
-    }
-  }
+  return { type: 'table', name: tableName, single, fields }
+}
+
+function parseFields(tokens: Token.Any[], tableName: string) {
+  let rest = tokens
+
+  const openBracketResult = parseOpenBracket(
+    rest,
+    `open bracket for table "${tableName}"`,
+  )
+  rest = openBracketResult.rest
+  const { closeBracket, single } = openBracketResult
 
   const fields: AST.Field[] = []
+
   for (;;) {
     if (rest.length === 0) {
-      throw new Error(`missing table close bracket "${closeBracket}"`)
+      throw new Error(
+        `missing close bracket "${closeBracket}" for table "${tableName}"`,
+      )
     }
 
     const token = rest[0]
@@ -151,12 +145,30 @@ function parseTable(tokens: Token.Any[]): AST.Table {
       continue
     }
 
+    if (isOpenBracket(token)) {
+      const field = fields.pop()
+      if (!field) {
+        throw new Error(
+          `missing relation table name in fields of table "${tableName}"`,
+        )
+      }
+      const fieldsResult = parseFields(rest, field.name)
+      rest = fieldsResult.rest
+      fields.push({
+        type: 'table',
+        name: field.name,
+        single: fieldsResult.single,
+        fields: fieldsResult.fields,
+      })
+      continue
+    }
+
     throw new Error(
       `expected table fields, got token: ${JSON.stringify(token)}`,
     )
   }
 
-  return { type: 'table', name: tableName, single, fields }
+  return { single, fields, rest }
 }
 
 function parseWord(tokens: Token.Any[], name: string) {
@@ -193,4 +205,38 @@ function parseSymbol(tokens: Token.Any[], name: string) {
     }
     throw new Error(`expect ${name} but got: ${JSON.stringify(token)}`)
   }
+}
+
+function isOpenBracket(token: Token.Any): boolean {
+  return token.type === 'symbol' && (token.value === '{' || token.value === '[')
+}
+
+function parseOpenBracket(tokens: Token.Any[], name: string) {
+  let rest = tokens
+
+  const result = parseSymbol(rest, name)
+  const openBracket = result.value
+  rest = result.rest
+  let single: boolean
+  let closeBracket: string
+
+  switch (openBracket) {
+    case '[': {
+      single = false
+      closeBracket = ']'
+      break
+    }
+    case '{': {
+      single = true
+      closeBracket = '}'
+      break
+    }
+    default: {
+      throw new Error(
+        `expect "[" or "{" as ${name}, got: ${JSON.stringify(openBracket)}`,
+      )
+    }
+  }
+
+  return { rest, single, openBracket, closeBracket }
 }

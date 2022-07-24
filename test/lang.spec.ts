@@ -69,5 +69,90 @@ select user {
         })
       })
     })
+
+    context('nested select expression', () => {
+      it('should parse single inner join select', () => {
+        expect(
+          decode(
+            `
+select post {
+  title
+  author {
+    nickname
+  }
+}
+`,
+          ),
+        ).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: true,
+            fields: [
+              { type: 'column', name: 'title' },
+              {
+                type: 'table',
+                name: 'author',
+                single: true,
+                fields: [{ type: 'column', name: 'nickname' }],
+              },
+            ],
+          },
+        })
+      })
+      it('should parse multi-nested inner join select', () => {
+        expect(
+          decode(
+            `
+select cart {
+  user_id
+  user {
+    nickname
+  }
+  product_id
+  product {
+    price
+    shop {
+      name
+    }
+  }
+}
+`,
+          ),
+        ).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'cart',
+            single: true,
+            fields: [
+              { type: 'column', name: 'user_id' },
+              {
+                type: 'table',
+                name: 'user',
+                single: true,
+                fields: [{ type: 'column', name: 'nickname' }],
+              },
+              { type: 'column', name: 'product_id' },
+              {
+                type: 'table',
+                name: 'product',
+                single: true,
+                fields: [
+                  { type: 'column', name: 'price' },
+                  {
+                    type: 'table',
+                    name: 'shop',
+                    single: true,
+                    fields: [{ type: 'column', name: 'name' }],
+                  },
+                ],
+              },
+            ],
+          },
+        })
+      })
+    })
   })
 })
