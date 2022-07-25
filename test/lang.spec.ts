@@ -287,5 +287,48 @@ select thread as post {
         })
       })
     })
+
+    context('where statement', () => {
+      context('where condition on single column with literal value', () => {
+        let ast = {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'user',
+            single: true,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'username' },
+            ],
+            where: 'is_admin = 1',
+          },
+        }
+        it('should parse inline where condition', () => {
+          expect(
+            decode(
+              `
+              select user {
+                id
+                username
+              } where is_admin = 1
+              `,
+            ),
+          ).to.deep.equals(ast)
+        })
+        it('should parse multiline where condition', () => {
+          expect(
+            decode(
+              `
+              select user {
+                id
+                username
+              }
+              where is_admin = 1
+              `,
+            ),
+          ).to.deep.equals(ast)
+        })
+      })
+    })
   })
 })

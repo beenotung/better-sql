@@ -19,8 +19,8 @@ export namespace Token {
   export type Any = Word | Symbol | Newline
 }
 
-const wordRegex = /^[a-zA-Z_]+/
-const symbols = Object.fromEntries('{}[]()?<>=:,'.split('').map(c => [c, true]))
+const wordRegex = /^[a-zA-Z_0-9]+/
+const symbols = Object.fromEntries('{}[]()<>=:,'.split('').map(c => [c, true]))
 
 export function tokenize(text: string): Token.Any[] {
   const tokens: Token.Any[] = []
@@ -68,6 +68,7 @@ export namespace AST {
     single: boolean
     join?: string
     fields: Field[]
+    where?: string
   }
   export type Field = Column | Table
   export type Column = {
@@ -75,6 +76,7 @@ export namespace AST {
     name: string
     alias?: string
   }
+  export type Where = string
 }
 
 export function parse(tokens: Token.Any[]): AST.Expression {
@@ -113,11 +115,14 @@ function parseTable(tokens: Token.Any[]): AST.Table {
 
   const fieldResult = parseFields(rest, tableName)
   rest = fieldResult.rest
-  const { single, fields } = fieldResult
+  const { single, fields, where } = fieldResult
 
   let table: AST.Table = { type: 'table', name: tableName, single, fields }
   if (alias) {
     table.alias = alias
+  }
+  if (where) {
+    table.where = where
   }
   return table
 }
@@ -206,7 +211,22 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     )
   }
 
-  return { single, fields, rest }
+  let where: string | undefined
+  while (rest.length > 0 && rest[0].type === 'newline') {
+    rest = rest.slice(1)
+  }
+  if (rest.length > 0) {
+    let token = rest[0]
+    if (token.type === 'word' && token.value === 'where') {
+      rest = rest.slice(1)
+      console.log('after where:', rest)
+      where = rest
+        .map(token => (token.type === 'newline' ? '\n' : token.value))
+        .join(' ')
+    }
+  }
+
+  return { single, fields, rest, where }
 }
 
 function parseWord(tokens: Token.Any[], name: string) {

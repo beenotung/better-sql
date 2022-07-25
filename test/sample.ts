@@ -1,18 +1,17 @@
 import { decode } from '../src/parse'
 
 let text = `
-select thread as post [
+from thread as post [
 	id as post_id
 	title
 	author_id
 	author {
     nickname
     avatar
-  }
+  } where delete_time is null
 	type_id
 	type { name }
-	?created_at >= :since
-]
+] where created_at >= :since and delete_time is null
 `
 
 let res = decode(text)
