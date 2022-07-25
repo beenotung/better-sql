@@ -290,43 +290,86 @@ select thread as post {
 
     context('where statement', () => {
       context('where condition on single column with literal value', () => {
-        let ast = {
-          type: 'select',
-          table: {
-            type: 'table',
-            name: 'user',
-            single: true,
-            fields: [
-              { type: 'column', name: 'id' },
-              { type: 'column', name: 'username' },
-            ],
-            where: 'is_admin = 1',
-          },
-        }
-        it('should parse inline where condition', () => {
-          expect(
-            decode(
-              `
+        context('tailing where condition after table fields', () => {
+          let ast = {
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'user',
+              single: true,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'username' },
+              ],
+              where: 'is_admin = 1',
+            },
+          }
+
+          it('should parse inline where condition', () => {
+            expect(
+              decode(
+                `
               select user {
                 id
                 username
               } where is_admin = 1
               `,
-            ),
-          ).to.deep.equals(ast)
-        })
-        it('should parse multiline where condition', () => {
-          expect(
-            decode(
-              `
+              ),
+            ).to.deep.equals(ast)
+          })
+
+          it('should parse multiline where condition', () => {
+            expect(
+              decode(
+                `
               select user {
                 id
                 username
               }
               where is_admin = 1
               `,
-            ),
-          ).to.deep.equals(ast)
+              ),
+            ).to.deep.equals(ast)
+          })
+        })
+
+        context('where condition in nested table fields', () => {
+          let ast = {
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                {
+                  type: 'table',
+                  name: 'author',
+                  single: true,
+                  fields: [{ type: 'column', name: 'nickname' }],
+                  where: 'is_admin = 1',
+                },
+                { type: 'column', name: 'title' },
+              ],
+              where: 'delete_time is null',
+            },
+          }
+
+          it('should parse nested inline where condition', () => {
+            expect(
+              decode(
+                `
+              select post [
+                id
+                author {
+                  nickname
+                } where is_admin = 1
+                title
+              ] where delete_time is null
+              `,
+              ),
+            ).to.deep.equals(ast)
+          })
         })
       })
     })

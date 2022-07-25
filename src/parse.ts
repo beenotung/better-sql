@@ -105,10 +105,10 @@ function parseTable(tokens: Token.Any[]): AST.Table {
   }
 
   let alias: string | undefined
-  let token = rest[0]
+  const token = rest[0]
   if (token.type === 'word' && token.value === 'as') {
     rest = rest.slice(1)
-    let aliasResult = parseWord(rest, `alias of table "${tableName}"`)
+    const aliasResult = parseWord(rest, `alias of table "${tableName}"`)
     rest = aliasResult.rest
     alias = aliasResult.value
   }
@@ -117,7 +117,7 @@ function parseTable(tokens: Token.Any[]): AST.Table {
   rest = fieldResult.rest
   const { single, fields, where } = fieldResult
 
-  let table: AST.Table = { type: 'table', name: tableName, single, fields }
+  const table: AST.Table = { type: 'table', name: tableName, single, fields }
   if (alias) {
     table.alias = alias
   }
@@ -193,7 +193,7 @@ function parseFields(tokens: Token.Any[], tableName: string) {
       )
       const fieldsResult = parseFields(rest, field.name)
       rest = fieldsResult.rest
-      let table: AST.Table = {
+      const table: AST.Table = {
         type: 'table',
         name: field.name,
         single: fieldsResult.single,
@@ -201,6 +201,9 @@ function parseFields(tokens: Token.Any[], tableName: string) {
       }
       if (field.alias) {
         table.alias = field.alias
+      }
+      if (fieldsResult.where) {
+        table.where = fieldsResult.where
       }
       fields.push(table)
       continue
@@ -211,20 +214,9 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     )
   }
 
-  let where: string | undefined
-  while (rest.length > 0 && rest[0].type === 'newline') {
-    rest = rest.slice(1)
-  }
-  if (rest.length > 0) {
-    let token = rest[0]
-    if (token.type === 'word' && token.value === 'where') {
-      rest = rest.slice(1)
-      console.log('after where:', rest)
-      where = rest
-        .map(token => (token.type === 'newline' ? '\n' : token.value))
-        .join(' ')
-    }
-  }
+  const whereResult = parseWhere(rest, tableName)
+  rest = whereResult.rest
+  const { where } = whereResult
 
   return { single, fields, rest, where }
 }
@@ -297,4 +289,42 @@ function parseOpenBracket(tokens: Token.Any[], name: string) {
   }
 
   return { rest, single, openBracket, closeBracket }
+}
+
+function skipNewline(tokens: Token.Any[]) {
+  let rest = tokens
+  while (rest.length > 0 && rest[0].type === 'newline') {
+    rest = rest.slice(1)
+  }
+  return rest
+}
+
+function parseWhere(tokens: Token.Any[], tableName: string) {
+  let rest = skipNewline(tokens)
+  let where = ''
+  if (rest.length > 0) {
+    const token = rest[0]
+    if (token.type === 'word' && token.value === 'where') {
+      rest = rest.slice(1)
+      rest = skipNewline(rest)
+      // console.log('after where:', rest)
+      if (rest.length === 0) {
+        throw new Error(`empty where statement after table "${tableName}"`)
+      }
+      while (rest.length > 0) {
+        const token = rest[0]
+        if (token.type === 'newline') {
+          rest = rest.slice(1)
+          break
+        }
+        if (where) {
+          where += ' '
+        }
+        where += token.value
+        rest = rest.slice(1)
+      }
+      // console.log('where:', where)
+    }
+  }
+  return { where, rest }
 }
