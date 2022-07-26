@@ -372,6 +372,38 @@ select thread as post {
           })
         })
       })
+
+      context('where condition with variables', () => {
+        function test(variable) {
+          it(`should parse "${variable}"`, () => {
+            expect(
+              decode(`
+select thread as post [
+  id
+  title
+] where user_id = ${variable}
+`),
+            ).to.deep.equals({
+              type: 'select',
+              table: {
+                type: 'table',
+                name: 'thread',
+                single: false,
+                alias: 'post',
+                fields: [
+                  { type: 'column', name: 'id' },
+                  { type: 'column', name: 'title' },
+                ],
+                where: `user_id = ${variable}`,
+              },
+            })
+          })
+        }
+        test(':user_id')
+        test('$user_id')
+        test('@user_id')
+        test('?')
+      })
     })
   })
 })

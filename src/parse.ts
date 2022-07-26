@@ -19,8 +19,8 @@ export namespace Token {
   export type Any = Word | Symbol | Newline
 }
 
-const wordRegex = /^[a-zA-Z_0-9]+/
-const symbols = Object.fromEntries('{}[]()<>=:,'.split('').map(c => [c, true]))
+const wordRegex = /^[a-zA-Z_0-9:@\$\?]+/
+const symbols = Object.fromEntries('{}[]()<>=,'.split('').map(c => [c, true]))
 
 export function tokenize(text: string): Token.Any[] {
   const tokens: Token.Any[] = []
