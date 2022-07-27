@@ -1,15 +1,20 @@
 import { AST } from './parse'
 
+type WhereCondition = {
+  tableName: string
+  where: AST.Where
+}
+
 export function generateSQL(ast: AST.Select): string {
   const table = ast.table
   const selectFields: string[] = []
 
   let fromSQL = 'from ' + nameToSQL(table)
-  let whereConditions: AST.Where[] = []
+  const whereConditions: WhereCondition[] = []
 
   function processTable(table: AST.Table) {
     const tableName = table.alias || table.name
-    let { where } = table
+    const { where } = table
 
     table.fields.forEach(field => {
       if (field.type === 'column') {
@@ -23,13 +28,7 @@ inner join ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
       }
     })
     if (where) {
-      if (shouldAddTablePrefix(where.left)) {
-        where = { ...where, left: tableName + '.' + where.left }
-      }
-      if (shouldAddTablePrefix(where.right)) {
-        where = { ...where, right: tableName + '.' + where.right }
-      }
-      whereConditions.push(where)
+      whereConditions.push({ tableName, where })
     }
   }
 
@@ -84,11 +83,21 @@ function shouldAddTablePrefix(field: string): boolean {
   return !(+field || field.includes('.'))
 }
 
-function whereToSQL(where: AST.Where): string {
-  let sql = [where.left, where.op, where.right].join(' ')
-  let { next } = where
+function whereToSQL(whereCondition: WhereCondition): string {
+  const { tableName, where } = whereCondition
+  let { left, op, right } = where
+  if (shouldAddTablePrefix(left)) {
+    left = tableName + '.' + left
+  }
+  if (shouldAddTablePrefix(right)) {
+    right = tableName + '.' + right
+  }
+  let sql = [left, op, right].join(' ')
+  const { next } = where
   if (next) {
-    sql += ` ${next.op} ` + whereToSQL(next.where)
+    const space = ' '.repeat('where'.length - next.op.length)
+    sql +=
+      `\n${space}${next.op} ` + whereToSQL({ tableName, where: next.where })
   }
   return sql
 }

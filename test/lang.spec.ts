@@ -554,6 +554,126 @@ where post.user_id = ${variable}
         test('@user_id')
         test('?')
       })
+
+      context('where condition on multiple column', () => {
+        it('should parse multiple column where statement on single table', () => {
+          let query = `
+select post [
+  id
+, title
+]
+where delete_time is null
+  and user_id = ?
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'title' },
+              ],
+              where: {
+                type: 'where',
+                left: 'delete_time',
+                op: 'is',
+                right: 'null',
+                next: {
+                  op: 'and',
+                  where: {
+                    type: 'where',
+                    left: 'user_id',
+                    op: '=',
+                    right: '?',
+                  },
+                },
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, post.title
+from post
+where post.delete_time is null
+  and post.user_id = ?
+`,
+          )
+        })
+
+        it('should parse multiple column where statement on nested table', () => {
+          let query = `
+select post [
+  id
+, title
+, author {
+  nickname
+} where is_admin = 1
+]
+where delete_time is null
+  and user_id = ?
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'title' },
+                {
+                  type: 'table',
+                  name: 'author',
+                  single: true,
+                  fields: [{ type: 'column', name: 'nickname' }],
+                  where: {
+                    type: 'where',
+                    left: 'is_admin',
+                    op: '=',
+                    right: '1',
+                  },
+                },
+              ],
+              where: {
+                type: 'where',
+                left: 'delete_time',
+                op: 'is',
+                right: 'null',
+                next: {
+                  op: 'and',
+                  where: {
+                    type: 'where',
+                    left: 'user_id',
+                    op: '=',
+                    right: '?',
+                  },
+                },
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, post.title
+, author.nickname
+from post
+inner join author on author.id = post.author_id
+where author.is_admin = 1
+  and post.delete_time is null
+  and post.user_id = ?
+`,
+          )
+        })
+      })
     })
   })
 })
