@@ -409,11 +409,11 @@ inner join user as author on author.id = post.author_id
 
           it('should parse inline where condition', () => {
             let query = `
-              select user [
-                id
-                username
-              ] where is_admin = 1
-              `
+select user [
+  id
+  username
+] where is_admin = 1
+`
             expect(decode(query)).to.deep.equals(ast)
             let sql = generateSQL(ast)
             expect(sql).to.equals(
@@ -429,12 +429,12 @@ where user.is_admin = 1
 
           it('should parse multiline where condition', () => {
             let query = `
-              select user [
-                id
-                username
-              ]
-              where is_admin = 1
-              `
+select user [
+  id
+  username
+]
+where is_admin = 1
+`
             expect(decode(query)).to.deep.equals(ast)
             let sql = generateSQL(ast)
             expect(sql).to.equals(
@@ -483,14 +483,14 @@ where user.is_admin = 1
 
           it('should parse nested inline where condition', () => {
             let query = `
-              select post [
-                id
-                author {
-                  nickname
-                } where is_admin = 1
-                title
-              ] where delete_time is null
-              `
+select post [
+  id
+  author {
+    nickname
+  } where is_admin = 1
+  title
+] where delete_time is null
+`
             expect(decode(query)).to.deep.equals(ast)
             let sql = generateSQL(ast)
             expect(sql).to.equals(
