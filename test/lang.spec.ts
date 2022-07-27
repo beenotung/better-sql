@@ -513,7 +513,7 @@ where author.is_admin = 1
         function test(variable) {
           it(`should parse "${variable}"`, () => {
             let query = `
-select thread as post [
+select post [
   id
   title
 ] where user_id = ${variable}
@@ -523,9 +523,8 @@ select thread as post [
               type: 'select',
               table: {
                 type: 'table',
-                name: 'thread',
+                name: 'post',
                 single: false,
-                alias: 'post',
                 fields: [
                   { type: 'column', name: 'id' },
                   { type: 'column', name: 'title' },
@@ -544,7 +543,7 @@ select thread as post [
 select
   post.id
 , post.title
-from thread as post
+from post
 where post.user_id = ${variable}
 `,
             )
