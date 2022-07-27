@@ -20,7 +20,8 @@ export namespace Token {
 }
 
 const wordRegex = /^[a-zA-Z_0-9:@\$\?]+/
-const symbols = Object.fromEntries('{}[]()<>=,'.split('').map(c => [c, true]))
+const symbols = Object.fromEntries('{}[]()<>!=,'.split('').map(c => [c, true]))
+const keywords = ['<>', '!=', '<=', '>=']
 
 export function tokenize(text: string): Token.Any[] {
   const tokens: Token.Any[] = []
@@ -34,6 +35,42 @@ export function tokenize(text: string): Token.Any[] {
       let rest = line
       for (;;) {
         rest = rest.trim()
+
+        for (let keyword of keywords) {
+          if (
+            rest.startsWith(keyword) &&
+            (rest[keyword.length] === ' ' || rest[keyword.length] === '\n')
+          ) {
+            rest = rest.slice(keyword.length)
+            tokens.push({ type: 'symbol', value: keyword })
+            continue
+          }
+        }
+
+        let parts = rest
+          .split(' ')
+          .map(part => part.trim())
+          .filter(part => part.length > 0)
+        if (
+          parts[0]?.toLowerCase() === 'is' &&
+          parts[1]?.toLowerCase() === 'not' &&
+          parts[2]?.toLowerCase() === 'null'
+        ) {
+          tokens.push({ type: 'symbol', value: parts[0] + ' ' + parts[1] })
+          tokens.push({ type: 'word', value: parts[2] })
+          rest = parts.length <= 3 ? '' : rest.slice(rest.indexOf(parts[3]))
+          continue
+        }
+        if (
+          parts[0]?.toLowerCase() === 'is' &&
+          parts[1]?.toLowerCase() === 'null'
+        ) {
+          tokens.push({ type: 'symbol', value: parts[0] })
+          tokens.push({ type: 'word', value: parts[1] })
+          rest = parts.length <= 2 ? '' : rest.slice(rest.indexOf(parts[2]))
+          continue
+        }
+
         const char = rest[0]
         if (!char) return
         if (char in symbols) {
@@ -68,7 +105,7 @@ export namespace AST {
     single: boolean
     join?: string
     fields: Field[]
-    where?: string
+    where?: Where
   }
   export type Field = Column | Table
   export type Column = {
@@ -76,7 +113,17 @@ export namespace AST {
     name: string
     alias?: string
   }
-  export type Where = string
+  export type Where = {
+    type: 'where'
+    left: string
+    op: WhereOp
+    right: string
+    next?: {
+      op: WhereOp
+      where: Where
+    }
+  }
+  export type WhereOp = string
 }
 
 export function parse(tokens: Token.Any[]): AST.Expression {
@@ -299,32 +346,73 @@ function skipNewline(tokens: Token.Any[]) {
   return rest
 }
 
-function parseWhere(tokens: Token.Any[], tableName: string) {
+function parseWhere(
+  tokens: Token.Any[],
+  tableName: string,
+): { rest: Token.Any[]; where?: AST.Where } {
   let rest = skipNewline(tokens)
-  let where = ''
-  if (rest.length > 0) {
-    const token = rest[0]
-    if (token.type === 'word' && token.value === 'where') {
-      rest = rest.slice(1)
-      rest = skipNewline(rest)
-      // console.log('after where:', rest)
-      if (rest.length === 0) {
-        throw new Error(`empty where statement after table "${tableName}"`)
-      }
-      while (rest.length > 0) {
-        const token = rest[0]
-        if (token.type === 'newline') {
-          rest = rest.slice(1)
-          break
-        }
-        if (where) {
-          where += ' '
-        }
-        where += token.value
+  if (isWord(rest[0], 'where')) {
+    rest = rest.slice(1)
+    return parseWherePart(rest, tableName)
+  }
+  return { rest }
+}
+
+function parseWherePart(
+  tokens: Token.Any[],
+  tableName: string,
+): { where: AST.Where; rest: Token.Any[] } {
+  let rest = tokens
+  rest = skipNewline(rest)
+  if (rest.length === 0) {
+    throw new Error(`empty where statement after table "${tableName}"`)
+  }
+
+  let leftResult = parseWord(
+    rest,
+    `left-hand side of where statement after table "${tableName}"`,
+  )
+  rest = leftResult.rest
+  let left = leftResult.value
+
+  let opResult = parseSymbol(
+    rest,
+    `operator pf where statement after table "${tableName}"`,
+  )
+  rest = opResult.rest
+  let op = opResult.value
+
+  let rightResult = parseWord(
+    rest,
+    `right-hand side of where statement after table "${tableName}"`,
+  )
+  rest = rightResult.rest
+  let right = rightResult.value
+
+  let where: AST.Where = { type: 'where', left, op, right }
+
+  rest = skipNewline(rest)
+  if (rest.length > 0 && rest[0].type === 'word') {
+    let word = rest[0].value.toLowerCase()
+    switch (word) {
+      case 'and':
+      case 'or': {
+        let op = rest[0].value
         rest = rest.slice(1)
+        let wherePartResult = parseWherePart(rest, tableName)
+        rest = wherePartResult.rest
+        where.next = { op, where: wherePartResult.where }
       }
-      // console.log('where:', where)
     }
   }
+
   return { where, rest }
+}
+
+function isWord(token: Token.Any | undefined, word: string) {
+  return (
+    token &&
+    token.type === 'word' &&
+    token.value.toLowerCase() === word.toLowerCase()
+  )
 }

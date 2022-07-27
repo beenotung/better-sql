@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { decode } from '../src/parse'
+import { AST, decode } from '../src/parse'
 import { generateSQL } from '../src/code-gen'
 
 describe('language TestSuit', () => {
@@ -315,22 +315,31 @@ inner join author on author.id = post.author_id
 
     context('join table with alias', () => {
       it('should parse table name alias', () => {
-        expect(decode(`select thread as post { id }`)).to.deep.equals({
+        let query = `select thread as post [ id ]`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
             name: 'thread',
-            single: true,
+            single: false,
             alias: 'post',
             fields: [{ type: 'column', name: 'id' }],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(
+          `
+select
+  post.id
+from thread as post
+`,
+        )
       })
 
       it('should parse nested table name alias', () => {
-        expect(
-          decode(`
-select thread as post {
+        let query = `
+select thread as post [
   id
   user as author {
     username
@@ -338,14 +347,15 @@ select thread as post {
     is_admin
   }
   title
-}
-`),
-        ).to.deep.equals({
+]
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
             name: 'thread',
-            single: true,
+            single: false,
             alias: 'post',
             fields: [
               { type: 'column', name: 'id' },
@@ -364,56 +374,73 @@ select thread as post {
             ],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(
+          `
+select
+  post.id
+, author.username
+, author.id as author_id
+, author.is_admin
+, post.title
+from thread as post
+inner join user as author on author.id = post.author_id
+`,
+        )
       })
     })
 
     context('where statement', () => {
       context('where condition on single column with literal value', () => {
         context('tailing where condition after table fields', () => {
-          let ast = {
+          let ast: AST.Select = {
             type: 'select',
             table: {
               type: 'table',
               name: 'user',
-              single: true,
+              single: false,
               fields: [
                 { type: 'column', name: 'id' },
                 { type: 'column', name: 'username' },
               ],
-              where: 'is_admin = 1',
+              where: { type: 'where', left: 'is_admin', op: '=', right: '1' },
             },
           }
 
           it('should parse inline where condition', () => {
-            expect(
-              decode(
-                `
-              select user {
+            let query = `
+              select user [
                 id
                 username
-              } where is_admin = 1
-              `,
-              ),
-            ).to.deep.equals(ast)
+              ] where is_admin = 1
+              `
+            expect(decode(query)).to.deep.equals(ast)
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(
+              `
+select
+  user.id
+, user.username
+from user
+where user.is_admin = 1
+`,
+            )
           })
 
           it('should parse multiline where condition', () => {
-            expect(
-              decode(
-                `
-              select user {
+            let query = `
+              select user [
                 id
                 username
-              }
+              ]
               where is_admin = 1
-              `,
-              ),
-            ).to.deep.equals(ast)
+              `
+            expect(decode(query)).to.deep.equals(ast)
           })
         })
 
         context('where condition in nested table fields', () => {
-          let ast = {
+          let ast: AST.Select = {
             type: 'select',
             table: {
               type: 'table',
@@ -426,11 +453,21 @@ select thread as post {
                   name: 'author',
                   single: true,
                   fields: [{ type: 'column', name: 'nickname' }],
-                  where: 'is_admin = 1',
+                  where: {
+                    type: 'where',
+                    left: 'is_admin',
+                    op: '=',
+                    right: '1',
+                  },
                 },
                 { type: 'column', name: 'title' },
               ],
-              where: 'delete_time is null',
+              where: {
+                type: 'where',
+                left: 'delete_time',
+                op: 'is',
+                right: 'null',
+              },
             },
           }
 
@@ -473,7 +510,12 @@ select thread as post [
                   { type: 'column', name: 'id' },
                   { type: 'column', name: 'title' },
                 ],
-                where: `user_id = ${variable}`,
+                where: {
+                  type: 'where',
+                  left: 'user_id',
+                  op: '=',
+                  right: variable,
+                },
               },
             })
           })

@@ -5,9 +5,20 @@ export function generateSQL(ast: AST.Select): string {
   const selectFields: string[] = []
 
   let fromSQL = 'from ' + nameToSQL(table)
+  let whereConditions: AST.Where[] = []
 
   function processTable(table: AST.Table) {
     const tableName = table.alias || table.name
+    let { where } = table
+    if (where) {
+      if (shouldAddTablePrefix(where.left)) {
+        where = { ...where, left: tableName + '.' + where.left }
+      }
+      if (shouldAddTablePrefix(where.right)) {
+        where = { ...where, right: tableName + '.' + where.right }
+      }
+      whereConditions.push(where)
+    }
     table.fields.forEach(field => {
       if (field.type === 'column') {
         selectFields.push(tableName + '.' + nameToSQL(field))
@@ -30,6 +41,16 @@ select
 ${selectSQL}
 ${fromSQL}
 `
+  if (whereConditions.length > 0) {
+    sql += `where `
+    if (whereConditions.length === 1) {
+      sql += whereToSQL(whereConditions[0])
+    } else {
+      sql += whereConditions.map(where => whereToSQL(where)).join(' and ')
+    }
+    sql += `
+`
+  }
   if (table.single) {
     sql += `limit 1
 `
@@ -41,6 +62,26 @@ function nameToSQL(named: { name: string; alias?: string }): string {
   let sql = named.name
   if (named.alias) {
     sql += ' as ' + named.alias
+  }
+  return sql
+}
+
+function shouldAddTablePrefix(field: string): boolean {
+  switch (field) {
+    case 'null':
+    case '0':
+    case '0.0':
+      return false
+    default:
+      return !(+field || field.includes('.'))
+  }
+}
+
+function whereToSQL(where: AST.Where): string {
+  let sql = [where.left, where.op, where.right].join(' ')
+  let { next } = where
+  if (next) {
+    sql += ` ${next.op} ` + whereToSQL(next.where)
   }
   return sql
 }
