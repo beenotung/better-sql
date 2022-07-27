@@ -10,15 +10,7 @@ export function generateSQL(ast: AST.Select): string {
   function processTable(table: AST.Table) {
     const tableName = table.alias || table.name
     let { where } = table
-    if (where) {
-      if (shouldAddTablePrefix(where.left)) {
-        where = { ...where, left: tableName + '.' + where.left }
-      }
-      if (shouldAddTablePrefix(where.right)) {
-        where = { ...where, right: tableName + '.' + where.right }
-      }
-      whereConditions.push(where)
-    }
+
     table.fields.forEach(field => {
       if (field.type === 'column') {
         selectFields.push(tableName + '.' + nameToSQL(field))
@@ -30,6 +22,15 @@ inner join ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
         processTable(field)
       }
     })
+    if (where) {
+      if (shouldAddTablePrefix(where.left)) {
+        where = { ...where, left: tableName + '.' + where.left }
+      }
+      if (shouldAddTablePrefix(where.right)) {
+        where = { ...where, right: tableName + '.' + where.right }
+      }
+      whereConditions.push(where)
+    }
   }
 
   processTable(table)
@@ -46,7 +47,7 @@ ${fromSQL}
     if (whereConditions.length === 1) {
       sql += whereToSQL(whereConditions[0])
     } else {
-      sql += whereConditions.map(where => whereToSQL(where)).join(' and ')
+      sql += whereConditions.map(where => whereToSQL(where)).join('\n  and ')
     }
     sql += `
 `
@@ -67,14 +68,20 @@ function nameToSQL(named: { name: string; alias?: string }): string {
 }
 
 function shouldAddTablePrefix(field: string): boolean {
+  switch (field[0]) {
+    case ':':
+    case '$':
+    case '@':
+    case '?':
+      return false
+  }
   switch (field) {
     case 'null':
     case '0':
     case '0.0':
       return false
-    default:
-      return !(+field || field.includes('.'))
   }
+  return !(+field || field.includes('.'))
 }
 
 function whereToSQL(where: AST.Where): string {

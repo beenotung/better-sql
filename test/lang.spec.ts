@@ -436,6 +436,16 @@ where user.is_admin = 1
               where is_admin = 1
               `
             expect(decode(query)).to.deep.equals(ast)
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(
+              `
+select
+  user.id
+, user.username
+from user
+where user.is_admin = 1
+`,
+            )
           })
         })
 
@@ -472,9 +482,7 @@ where user.is_admin = 1
           }
 
           it('should parse nested inline where condition', () => {
-            expect(
-              decode(
-                `
+            let query = `
               select post [
                 id
                 author {
@@ -482,9 +490,21 @@ where user.is_admin = 1
                 } where is_admin = 1
                 title
               ] where delete_time is null
-              `,
-              ),
-            ).to.deep.equals(ast)
+              `
+            expect(decode(query)).to.deep.equals(ast)
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(
+              `
+select
+  post.id
+, author.nickname
+, post.title
+from post
+inner join author on author.id = post.author_id
+where author.is_admin = 1
+  and post.delete_time is null
+`,
+            )
           })
         })
       })
@@ -492,14 +512,14 @@ where user.is_admin = 1
       context('where condition with variables', () => {
         function test(variable) {
           it(`should parse "${variable}"`, () => {
-            expect(
-              decode(`
+            let query = `
 select thread as post [
   id
   title
 ] where user_id = ${variable}
-`),
-            ).to.deep.equals({
+`
+            let ast = decode(query)
+            expect(ast).to.deep.equals({
               type: 'select',
               table: {
                 type: 'table',
@@ -518,6 +538,16 @@ select thread as post [
                 },
               },
             })
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(
+              `
+select
+  post.id
+, post.title
+from thread as post
+where post.user_id = ${variable}
+`,
+            )
           })
         }
         test(':user_id')
