@@ -209,68 +209,84 @@ inner join shop on shop.id = product.shop_id
 
     context('select column with alias', () => {
       it('should parse multi-line column alias', () => {
-        expect(
-          decode(
-            `
-select post {
+        let query = `
+select post [
   id
   title as post_title
   author_id
-}
+]
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title', alias: 'post_title' },
+              { type: 'column', name: 'author_id' },
+            ],
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(
+          `
+select
+  post.id
+, post.title as post_title
+, post.author_id
+from post
 `,
-          ),
-        ).to.deep.equals({
-          type: 'select',
-          table: {
-            type: 'table',
-            name: 'post',
-            single: true,
-            fields: [
-              { type: 'column', name: 'id' },
-              { type: 'column', name: 'title', alias: 'post_title' },
-              { type: 'column', name: 'author_id' },
-            ],
-          },
-        })
-      })
-
-      it('should parse column alias in nested select', () => {
-        expect(
-          decode(`select post { id, title as post_title, author_id }`),
-        ).to.deep.equals({
-          type: 'select',
-          table: {
-            type: 'table',
-            name: 'post',
-            single: true,
-            fields: [
-              { type: 'column', name: 'id' },
-              { type: 'column', name: 'title', alias: 'post_title' },
-              { type: 'column', name: 'author_id' },
-            ],
-          },
-        })
+        )
       })
 
       it('should parse inline column alias', () => {
-        expect(
-          decode(
-            `
-select post {
+        let query = `select post [ id, title as post_title, author_id ]`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title', alias: 'post_title' },
+              { type: 'column', name: 'author_id' },
+            ],
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(
+          `
+select
+  post.id
+, post.title as post_title
+, post.author_id
+from post
+`,
+        )
+      })
+
+      it('should parse column alias in nested select', () => {
+        let query = `
+select post [
   id
   title as post_title
   author {
     nickname as author
   }
-}
-`,
-          ),
-        ).to.deep.equals({
+]
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
             name: 'post',
-            single: true,
+            single: false,
             fields: [
               { type: 'column', name: 'id' },
               { type: 'column', name: 'title', alias: 'post_title' },
@@ -283,6 +299,17 @@ select post {
             ],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(
+          `
+select
+  post.id
+, post.title as post_title
+, author.nickname as author
+from post
+inner join author on author.id = post.author_id
+`,
+        )
       })
     })
 
