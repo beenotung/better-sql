@@ -1,11 +1,14 @@
 import { expect } from 'chai'
 import { decode } from '../src/parse'
+import { generateSQL } from '../src/code-gen'
 
 describe('language TestSuit', () => {
   context('select expression', () => {
-    context('single/multie row', () => {
+    context('single/multi row', () => {
       it('should parse multi-row select expression', () => {
-        expect(decode(`select user [ id ]`)).to.deep.equals({
+        let query = `select user [ id ]`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
@@ -14,10 +17,18 @@ describe('language TestSuit', () => {
             fields: [{ type: 'column', name: 'id' }],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  user.id
+from user
+`)
       })
 
       it('should parse single-row select expression', () => {
-        expect(decode(`select user { id }`)).to.deep.equals({
+        let query = `select user { id }`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
@@ -26,12 +37,21 @@ describe('language TestSuit', () => {
             fields: [{ type: 'column', name: 'id' }],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  user.id
+from user
+limit 1
+`)
       })
     })
 
     context('inline/multi-line expression', () => {
       it('should parse inline expression', () => {
-        expect(decode(`select user { id, nickname }`)).to.deep.equals({
+        let query = `select user { id, nickname }`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
@@ -43,19 +63,25 @@ describe('language TestSuit', () => {
             ],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  user.id
+, user.nickname
+from user
+limit 1
+`)
       })
 
       it('should parse multi-line expression', () => {
-        expect(
-          decode(
-            `
+        let query = `
 select user {
   id
   nickname
 }
-`,
-          ),
-        ).to.deep.equals({
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
@@ -67,28 +93,34 @@ select user {
             ],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  user.id
+, user.nickname
+from user
+limit 1
+`)
       })
     })
 
     context('nested select expression', () => {
       it('should parse single inner join select', () => {
-        expect(
-          decode(
-            `
-select post {
+        let query = `
+select post [
   title
   author {
     nickname
   }
-}
-`,
-          ),
-        ).to.deep.equals({
+]
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
             name: 'post',
-            single: true,
+            single: false,
             fields: [
               { type: 'column', name: 'title' },
               {
@@ -100,7 +132,16 @@ select post {
             ],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  post.title
+, author.nickname
+from post
+inner join author on author.id = post.author_id
+`)
       })
+
       it('should parse multi-nested inner join select', () => {
         expect(
           decode(
