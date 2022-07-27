@@ -36,7 +36,7 @@ export function tokenize(text: string): Token.Any[] {
       for (;;) {
         rest = rest.trim()
 
-        for (let keyword of keywords) {
+        for (const keyword of keywords) {
           if (
             rest.startsWith(keyword) &&
             (rest[keyword.length] === ' ' || rest[keyword.length] === '\n')
@@ -47,7 +47,7 @@ export function tokenize(text: string): Token.Any[] {
           }
         }
 
-        let parts = rest
+        const parts = rest
           .split(' ')
           .map(part => part.trim())
           .filter(part => part.length > 0)
@@ -368,38 +368,38 @@ function parseWherePart(
     throw new Error(`empty where statement after table "${tableName}"`)
   }
 
-  let leftResult = parseWord(
+  const leftResult = parseWord(
     rest,
     `left-hand side of where statement after table "${tableName}"`,
   )
   rest = leftResult.rest
-  let left = leftResult.value
+  const left = leftResult.value
 
-  let opResult = parseSymbol(
+  const opResult = parseSymbol(
     rest,
     `operator pf where statement after table "${tableName}"`,
   )
   rest = opResult.rest
-  let op = opResult.value
+  const op = opResult.value
 
-  let rightResult = parseWord(
+  const rightResult = parseWord(
     rest,
     `right-hand side of where statement after table "${tableName}"`,
   )
   rest = rightResult.rest
-  let right = rightResult.value
+  const right = rightResult.value
 
-  let where: AST.Where = { type: 'where', left, op, right }
+  const where: AST.Where = { type: 'where', left, op, right }
 
   rest = skipNewline(rest)
   if (rest.length > 0 && rest[0].type === 'word') {
-    let word = rest[0].value.toLowerCase()
+    const word = rest[0].value.toLowerCase()
     switch (word) {
       case 'and':
       case 'or': {
-        let op = rest[0].value
+        const op = rest[0].value
         rest = rest.slice(1)
-        let wherePartResult = parseWherePart(rest, tableName)
+        const wherePartResult = parseWherePart(rest, tableName)
         rest = wherePartResult.rest
         where.next = { op, where: wherePartResult.where }
       }

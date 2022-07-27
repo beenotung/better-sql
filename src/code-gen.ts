@@ -85,14 +85,14 @@ function shouldAddTablePrefix(field: string): boolean {
 
 function whereToSQL(whereCondition: WhereCondition): string {
   const { tableName, where } = whereCondition
-  let { left, op, right } = where
+  let { left, right } = where
   if (shouldAddTablePrefix(left)) {
     left = tableName + '.' + left
   }
   if (shouldAddTablePrefix(right)) {
     right = tableName + '.' + right
   }
-  let sql = [left, op, right].join(' ')
+  let sql = [left, where.op, right].join(' ')
   const { next } = where
   if (next) {
     const space = ' '.repeat('where'.length - next.op.length)
