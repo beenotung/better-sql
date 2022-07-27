@@ -143,10 +143,8 @@ inner join author on author.id = post.author_id
       })
 
       it('should parse multi-nested inner join select', () => {
-        expect(
-          decode(
-            `
-select cart {
+        let query = `
+select cart [
   user_id
   user {
     nickname
@@ -158,15 +156,15 @@ select cart {
       name
     }
   }
-}
-`,
-          ),
-        ).to.deep.equals({
+]
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
           type: 'select',
           table: {
             type: 'table',
             name: 'cart',
-            single: true,
+            single: false,
             fields: [
               { type: 'column', name: 'user_id' },
               {
@@ -193,6 +191,19 @@ select cart {
             ],
           },
         })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  cart.user_id
+, user.nickname
+, cart.product_id
+, product.price
+, shop.name
+from cart
+inner join user on user.id = cart.user_id
+inner join product on product.id = cart.product_id
+inner join shop on shop.id = product.shop_id
+`)
       })
     })
 

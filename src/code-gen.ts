@@ -12,11 +12,11 @@ export function generateSQL(ast: AST.Select): string {
       if (field.type === 'column') {
         selectFields.push(tableName + '.' + nameToSQL(field))
       } else if (field.type === 'table') {
-        processTable(field)
         const subTable = nameToSQL(field)
         const subTableName = field.alias || field.name
         fromSQL += `
 inner join ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
+        processTable(field)
       }
     })
   }
