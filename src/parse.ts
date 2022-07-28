@@ -389,7 +389,7 @@ function parseWherePart(
 
   const opResult = parseSymbol(
     rest,
-    `operator pf where statement after table "${tableName}"`,
+    `operator of where statement after table "${tableName}"`,
   )
   rest = opResult.rest
   const op = opResult.value
