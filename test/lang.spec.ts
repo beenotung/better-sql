@@ -556,7 +556,7 @@ where post.user_id = ${variable}
       })
 
       context('where condition on multiple column', () => {
-        it('should parse multiple column where statement on single table', () => {
+        it('should parse multiple column where statement with "and" logic on single table', () => {
           let query = `
 select post [
   id
@@ -606,7 +606,7 @@ where post.delete_time is null
           )
         })
 
-        it('should parse multiple column where statement on nested table', () => {
+        it('should parse multiple column where statement with "and" logic on nested table', () => {
           let query = `
 select post [
   id
@@ -670,6 +670,138 @@ inner join author on author.id = post.author_id
 where author.is_admin = 1
   and post.delete_time is null
   and post.user_id = ?
+`,
+          )
+        })
+      })
+
+      context('where condition with "or" logic', () => {
+        it('should parse "or" logic on single table', () => {
+          let query = `
+select post [
+  id
+, title
+]
+where type_id = 1
+   or type_id = 2
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'title' },
+              ],
+              where: {
+                type: 'where',
+                left: 'type_id',
+                op: '=',
+                right: '1',
+                next: {
+                  op: 'or',
+                  where: {
+                    type: 'where',
+                    left: 'type_id',
+                    op: '=',
+                    right: '2',
+                  },
+                },
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, post.title
+from post
+where post.type_id = 1
+   or post.type_id = 2
+`,
+          )
+        })
+
+        it('should parse "or" logic on nested table select', () => {
+          let query = `
+select post [
+  id
+, author {
+    nickname
+  }
+  where is_admin = 1
+     or is_editor = 1
+, title
+]
+where type_id = 1
+   or type_id = 2
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                {
+                  type: 'table',
+                  name: 'author',
+                  single: true,
+                  fields: [{ type: 'column', name: 'nickname' }],
+                  where: {
+                    type: 'where',
+                    left: 'is_admin',
+                    op: '=',
+                    right: '1',
+                    next: {
+                      op: 'or',
+                      where: {
+                        type: 'where',
+                        left: 'is_editor',
+                        op: '=',
+                        right: '1',
+                      },
+                    },
+                  },
+                },
+                { type: 'column', name: 'title' },
+              ],
+              where: {
+                type: 'where',
+                left: 'type_id',
+                op: '=',
+                right: '1',
+                next: {
+                  op: 'or',
+                  where: {
+                    type: 'where',
+                    left: 'type_id',
+                    op: '=',
+                    right: '2',
+                  },
+                },
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, author.nickname
+, post.title
+from post
+inner join author on author.id = post.author_id
+where (author.is_admin = 1
+   or author.is_editor = 1)
+  and (post.type_id = 1
+   or post.type_id = 2)
 `,
           )
         })

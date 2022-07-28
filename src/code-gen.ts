@@ -46,7 +46,15 @@ ${fromSQL}
     if (whereConditions.length === 1) {
       sql += whereToSQL(whereConditions[0])
     } else {
-      sql += whereConditions.map(where => whereToSQL(where)).join('\n  and ')
+      sql += whereConditions
+        .map(condition => {
+          let sql = whereToSQL(condition)
+          if (hasOr(condition.where)) {
+            sql = `(${sql})`
+          }
+          return sql
+        })
+        .join('\n  and ')
     }
     sql += `
 `
@@ -100,4 +108,13 @@ function whereToSQL(whereCondition: WhereCondition): string {
       `\n${space}${next.op} ` + whereToSQL({ tableName, where: next.where })
   }
   return sql
+}
+
+function hasOr(where: AST.Where): boolean {
+  if (where.op === 'or') return true
+  if (where.next) {
+    if (where.next.op === 'or') return true
+    if (where.next) return hasOr(where.next.where)
+  }
+  return false
 }
