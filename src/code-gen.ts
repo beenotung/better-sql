@@ -111,9 +111,9 @@ function whereToSQL(whereCondition: WhereCondition): string {
 }
 
 function hasOr(where: AST.Where): boolean {
-  if (where.op === 'or') return true
+  if (where.op.toLowerCase() === 'or') return true
   if (where.next) {
-    if (where.next.op === 'or') return true
+    if (where.next.op.toLowerCase() === 'or') return true
     if (where.next) return hasOr(where.next.where)
   }
   return false
