@@ -117,6 +117,7 @@ export namespace AST {
   export type Where = {
     type: 'where'
     whereStr?: string
+    not?: string
     left: string
     op: WhereOp
     right: string
@@ -380,6 +381,12 @@ function parseWherePart(
     throw new Error(`empty where statement after table "${tableName}"`)
   }
 
+  let not: string | undefined
+  if (isWord(rest[0], 'not')) {
+    not = (rest[0] as Token.Word).value
+    rest = rest.slice(1)
+  }
+
   const leftResult = parseWord(
     rest,
     `left-hand side of where statement after table "${tableName}"`,
@@ -402,6 +409,9 @@ function parseWherePart(
   const right = rightResult.value
 
   const where: AST.Where = { type: 'where', left, op, right }
+  if (not) {
+    where.not = not
+  }
 
   rest = skipNewline(rest)
   if (rest.length > 0 && rest[0].type === 'word') {

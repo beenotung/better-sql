@@ -806,6 +806,48 @@ where (author.is_admin = 1
           )
         })
       })
+
+      context('where condition with "not" logic', () => {
+        it('should parse where condition with "not" logic on single column', () => {
+          let query = `
+select post [
+  id
+, title
+]
+where not type_id = 1
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'title' },
+              ],
+              where: {
+                type: 'where',
+                left: 'type_id',
+                op: '=',
+                right: '1',
+                not: 'not',
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, post.title
+from post
+where not post.type_id = 1
+`,
+          )
+        })
+      })
     })
 
     it('should preserve original upper/lower case in the query', () => {

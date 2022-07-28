@@ -107,6 +107,9 @@ function whereToSQL(whereCondition: WhereCondition): string {
     right = tableName + '.' + right
   }
   let sql = [left, where.op, right].join(' ')
+  if (where.not) {
+    sql = where.not + ' ' + sql
+  }
   const { next } = where
   if (next) {
     const space = ' '.repeat('where'.length - next.op.length)
