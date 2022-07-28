@@ -807,5 +807,69 @@ where (author.is_admin = 1
         })
       })
     })
+
+    it('should preserve original upper/lower case in the query', () => {
+      let query = `
+SELECT POST [
+  ID
+, TITLE
+]
+WHERE AUTHOR_ID = :AUTHOR_ID
+  AND TYPE_ID = :Type_ID
+   OR NOT DELETE_TIME IS NULL
+`
+      let ast = decode(query)
+      expect(ast).to.deep.equals({
+        type: 'select',
+        selectStr: 'SELECT',
+        table: {
+          type: 'table',
+          name: 'POST',
+          single: false,
+          fields: [
+            { type: 'column', name: 'ID' },
+            { type: 'column', name: 'TITLE' },
+          ],
+          where: {
+            type: 'where',
+            whereStr: 'WHERE',
+            left: 'AUTHOR_ID',
+            op: '=',
+            right: ':AUTHOR_ID',
+            next: {
+              op: 'AND',
+              where: {
+                type: 'where',
+                left: 'TYPE_ID',
+                op: '=',
+                right: ':Type_ID',
+                next: {
+                  op: 'OR',
+                  where: {
+                    type: 'where',
+                    not: 'NOT',
+                    left: 'DELETE_TIME',
+                    op: 'IS',
+                    right: 'NULL',
+                  },
+                },
+              },
+            },
+          },
+        },
+      })
+      let sql = generateSQL(ast)
+      expect(sql).to.equals(
+        `
+SELECT
+  POST.ID
+, POST.TITLE
+FROM POST
+WHERE POST.AUTHOR_ID = :AUTHOR_ID
+  AND POST.TYPE_ID = :Type_ID
+   OR NOT POST.DELETE_TIME IS NULL
+`,
+      )
+    })
   })
 })

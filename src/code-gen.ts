@@ -9,7 +9,11 @@ export function generateSQL(ast: AST.Select): string {
   const table = ast.table
   const selectFields: string[] = []
 
-  let fromSQL = 'from ' + nameToSQL(table)
+  const selectStr: string = ast.selectStr || 'select'
+  const fromStr: string =
+    selectStr === 'SELECT' ? 'FROM' : selectStr === 'Select' ? 'From' : 'from'
+
+  let fromSQL = fromStr + ' ' + nameToSQL(table)
   const whereConditions: WhereCondition[] = []
 
   function processTable(table: AST.Table) {
@@ -37,12 +41,14 @@ inner join ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
   const selectSQL = '  ' + selectFields.join('\n, ')
 
   let sql = `
-select
+${selectStr}
 ${selectSQL}
 ${fromSQL}
 `
   if (whereConditions.length > 0) {
-    sql += `where `
+    const whereStr: string =
+      pickWhereStrFromConditions(whereConditions) || 'where'
+    sql += whereStr + ' '
     if (whereConditions.length === 1) {
       sql += whereToSQL(whereConditions[0])
     } else {
@@ -83,11 +89,11 @@ function shouldAddTablePrefix(field: string): boolean {
       return false
   }
   switch (field) {
-    case 'null':
     case '0':
     case '0.0':
       return false
   }
+  if (field.toLowerCase() === 'null') return false
   return !(+field || field.includes('.'))
 }
 
@@ -117,4 +123,18 @@ function hasOr(where: AST.Where): boolean {
     if (where.next) return hasOr(where.next.where)
   }
   return false
+}
+
+function pickWhereStrFromConditions(
+  whereConditions: WhereCondition[],
+): string | undefined {
+  for (const condition of whereConditions) {
+    const str = pickWhereStrFromAST(condition.where)
+    if (str) return str
+  }
+}
+
+function pickWhereStrFromAST(where: AST.Where): string | undefined {
+  if (where.whereStr) return where.whereStr
+  if (where.next) return pickWhereStrFromAST(where.next.where)
 }

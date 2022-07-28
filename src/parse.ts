@@ -96,6 +96,7 @@ export namespace AST {
   export type Expression = Select
   export type Select = {
     type: 'select'
+    selectStr?: string
     table: Table
   }
   export type Table = {
@@ -115,6 +116,7 @@ export namespace AST {
   }
   export type Where = {
     type: 'where'
+    whereStr?: string
     left: string
     op: WhereOp
     right: string
@@ -131,11 +133,16 @@ export function parse(tokens: Token.Any[]): AST.Expression {
     throw new Error('empty tokens')
   }
   const token = tokens[0]
-  if (token.type === 'word' && token.value === 'select') {
-    return {
+  if (isWord(token, 'select')) {
+    const ast: AST.Select = {
       type: 'select',
       table: parseTable(tokens.slice(1)),
     }
+    const selectStr = (token as Token.Word).value
+    if (selectStr !== 'select') {
+      ast.selectStr = selectStr
+    }
+    return ast
   }
   throw new Error('missing "select" token')
 }
@@ -352,8 +359,13 @@ function parseWhere(
 ): { rest: Token.Any[]; where?: AST.Where } {
   let rest = skipNewline(tokens)
   if (isWord(rest[0], 'where')) {
+    const whereStr = (rest[0] as Token.Word).value
     rest = rest.slice(1)
-    return parseWherePart(rest, tableName)
+    const partResult = parseWherePart(rest, tableName)
+    if (whereStr !== 'where') {
+      partResult.where.whereStr = whereStr
+    }
+    return partResult
   }
   return { rest }
 }
