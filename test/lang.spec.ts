@@ -848,6 +848,48 @@ where not post.type_id = 1
           )
         })
       })
+
+      context('where condition with parenthesis', () => {
+        it('should parse single parenthesis group', () => {
+          let query = `
+select post [
+  id
+, title
+] where (type_id = 1)
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'title' },
+              ],
+              where: {
+                type: 'where',
+                open: '(',
+                left: 'type_id',
+                op: '=',
+                right: '1',
+                close: ')',
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, post.title
+from post
+where (post.type_id = 1)
+`,
+          )
+        })
+      })
     })
 
     it('should preserve original upper/lower case in the query', () => {

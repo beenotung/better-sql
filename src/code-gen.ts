@@ -110,6 +110,12 @@ function whereToSQL(whereCondition: WhereCondition): string {
   if (where.not) {
     sql = where.not + ' ' + sql
   }
+  if (where.open) {
+    sql = where.open + sql
+  }
+  if (where.close) {
+    sql += where.close
+  }
   const { next } = where
   if (next) {
     const space = ' '.repeat('where'.length - next.op.length)

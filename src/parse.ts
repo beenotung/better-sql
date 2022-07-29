@@ -118,9 +118,11 @@ export namespace AST {
     type: 'where'
     whereStr?: string
     not?: string
+    open?: '('
     left: string
     op: WhereOp
     right: string
+    close?: ')'
     next?: {
       op: WhereOp
       where: Where
@@ -385,6 +387,14 @@ function parseWherePart(
   if (isWord(rest[0], 'not')) {
     not = (rest[0] as Token.Word).value
     rest = rest.slice(1)
+    rest = skipNewline(rest)
+  }
+
+  let open: '(' | undefined
+  if (isSymbol(rest[0], '(')) {
+    open = '('
+    rest = rest.slice(1)
+    rest = skipNewline(rest)
   }
 
   const leftResult = parseWord(
@@ -408,12 +418,26 @@ function parseWherePart(
   rest = rightResult.rest
   const right = rightResult.value
 
+  rest = skipNewline(rest)
+
+  let close: ')' | undefined
+  if (isSymbol(rest[0], ')')) {
+    close = ')'
+    rest = rest.slice(1)
+    rest = skipNewline(rest)
+  }
+
   const where: AST.Where = { type: 'where', left, op, right }
   if (not) {
     where.not = not
   }
+  if (open) {
+    where.open = open
+  }
+  if (close) {
+    where.close = close
+  }
 
-  rest = skipNewline(rest)
   if (rest.length > 0 && rest[0].type === 'word') {
     const word = rest[0].value.toLowerCase()
     switch (word) {
@@ -436,5 +460,11 @@ function isWord(token: Token.Any | undefined, word: string) {
     token &&
     token.type === 'word' &&
     token.value.toLowerCase() === word.toLowerCase()
+  )
+}
+
+function isSymbol(token: Token.Any | undefined, symbol: string) {
+  return (
+    token && token.type === 'symbol' && token.value.toLowerCase() === symbol
   )
 }
