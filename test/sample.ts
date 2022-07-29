@@ -1,7 +1,7 @@
 import { decode } from '../src/parse'
 
 let text = `
-from thread as post [
+select post [
 	id as post_id
 	title
 	author_id
