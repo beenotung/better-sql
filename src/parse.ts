@@ -73,6 +73,10 @@ export function tokenize(text: string): Token.Any[] {
 
         const char = rest[0]
         if (!char) return
+        if (char == ' ') {
+          rest = rest.trim()
+          continue
+        }
         if (char in symbols) {
           rest = rest.slice(1)
           tokens.push({ type: 'symbol', value: char })
