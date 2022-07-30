@@ -404,11 +404,11 @@ function parseWhereExpr(
     return { rest, expr }
   }
 
+  let expr: AST.WhereExpr
   if (isSymbol(rest[0], '(')) {
     rest = rest.slice(1)
     const result = parseWhereExpr(rest, tableName)
     rest = result.rest
-    const expr = result.expr
     rest = skipNewline(rest)
     if (!isSymbol(rest[0], ')')) {
       throw new Error(
@@ -416,33 +416,33 @@ function parseWhereExpr(
       )
     }
     rest = rest.slice(1)
-    return { rest, expr: { type: 'parenthesis', expr } }
+    expr = { type: 'parenthesis', expr: result.expr }
+  } else {
+    const leftResult = parseWord(
+      rest,
+      `left-hand side of where statement after table "${tableName}"`,
+    )
+    rest = leftResult.rest
+    const left = leftResult.value
+
+    const opResult = parseSymbol(
+      rest,
+      `operator of where statement after table "${tableName}"`,
+    )
+    rest = opResult.rest
+    const op = opResult.value
+
+    const rightResult = parseWord(
+      rest,
+      `right-hand side of where statement after table "${tableName}"`,
+    )
+    rest = rightResult.rest
+    const right = rightResult.value
+
+    expr = { type: 'compare', left, op, right }
   }
 
-  const leftResult = parseWord(
-    rest,
-    `left-hand side of where statement after table "${tableName}"`,
-  )
-  rest = leftResult.rest
-  const left = leftResult.value
-
-  const opResult = parseSymbol(
-    rest,
-    `operator of where statement after table "${tableName}"`,
-  )
-  rest = opResult.rest
-  const op = opResult.value
-
-  const rightResult = parseWord(
-    rest,
-    `right-hand side of where statement after table "${tableName}"`,
-  )
-  rest = rightResult.rest
-  const right = rightResult.value
-
   rest = skipNewline(rest)
-
-  let expr: AST.WhereExpr = { type: 'compare', left, op, right }
 
   check_logic: while (rest.length > 0 && rest[0].type === 'word') {
     const word = rest[0].value.toLowerCase()
