@@ -26,8 +26,9 @@ export function generateSQL(ast: AST.Select): string {
       } else if (field.type === 'table') {
         const subTable = nameToSQL(field)
         const subTableName = field.alias || field.name
+        const join = field.single ? 'inner join' : 'left join'
         fromSQL += `
-inner join ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
+${join} ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
         processTable(field)
       }
     })

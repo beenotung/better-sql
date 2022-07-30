@@ -142,6 +142,43 @@ inner join author on author.id = post.author_id
 `)
       })
 
+ it('should parse single left join select', () => {
+        let query = `
+select post [
+  title
+  author [
+    nickname
+  ]
+]
+`
+        let ast = decode(query)
+        expect(ast).to.deep.equals({
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'title' },
+              {
+                type: 'table',
+                name: 'author',
+                single: false,
+                fields: [{ type: 'column', name: 'nickname' }],
+              },
+            ],
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(`
+select
+  post.title
+, author.nickname
+from post
+left join author on author.id = post.author_id
+`)
+      })
+
       it('should parse multi-nested inner join select', () => {
         let query = `
 select cart [
