@@ -54,20 +54,20 @@ export function tokenize(text: string): Token.Any[] {
         if (
           parts[0]?.toLowerCase() === 'is' &&
           parts[1]?.toLowerCase() === 'not' &&
-          parts[2]?.toLowerCase() === 'null'
+          parts[2]?.toLowerCase().startsWith('null')
         ) {
           tokens.push({ type: 'symbol', value: parts[0] + ' ' + parts[1] })
-          tokens.push({ type: 'word', value: parts[2] })
-          rest = parts.length <= 3 ? '' : rest.slice(rest.indexOf(parts[3]))
+          tokens.push({ type: 'word', value: parts[2].slice(0, 'null'.length) })
+          rest = rest.slice(rest.indexOf(parts[2] + 'null'.length))
           continue
         }
         if (
           parts[0]?.toLowerCase() === 'is' &&
-          parts[1]?.toLowerCase() === 'null'
+          parts[1]?.toLowerCase().startsWith('null')
         ) {
           tokens.push({ type: 'symbol', value: parts[0] })
-          tokens.push({ type: 'word', value: parts[1] })
-          rest = parts.length <= 2 ? '' : rest.slice(rest.indexOf(parts[2]))
+          tokens.push({ type: 'word', value: parts[1].slice(0, 'null'.length) })
+          rest = rest.slice(rest.indexOf(parts[1]) + 'null'.length)
           continue
         }
 

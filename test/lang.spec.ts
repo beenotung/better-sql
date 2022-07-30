@@ -926,6 +926,79 @@ where (post.type_id = 1)
 `,
           )
         })
+
+        it('should parse multi parenthesis groups', () => {
+          let query = `
+select post [
+  id
+, title
+] where (delete_time is null or recover_time is not null)
+    and (type_id = 1 or type_id = 2)
+`
+          let ast = decode(query)
+          expect(ast).to.deep.equals({
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [
+                { type: 'column', name: 'id' },
+                { type: 'column', name: 'title' },
+              ],
+              where: {
+                type: 'where',
+                open: '(',
+                left: 'delete_time',
+                op: 'is',
+                right: 'null',
+                next: {
+                  op: 'or',
+                  where: {
+                    type: 'where',
+                    left: 'recover_time',
+                    op: 'is not',
+                    right: 'null',
+                    close: ')',
+                    next: {
+                      op: 'and',
+                      where: {
+                        type: 'where',
+                        open: '(',
+                        left: 'type_id',
+                        op: '=',
+                        right: '1',
+                        next: {
+                          op: 'or',
+                          where: {
+                            type: 'where',
+                            left: 'type_id',
+                            op: '=',
+                            right: '2',
+                            close: ')',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(
+            `
+select
+  post.id
+, post.title
+from post
+where (post.delete_time is null
+   or post.recover_time is not null)
+  and (post.type_id = 1
+   or post.type_id = 2)
+`,
+          )
+        })
       })
     })
 
