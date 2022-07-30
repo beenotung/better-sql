@@ -115,20 +115,25 @@ export namespace AST {
     alias?: string
   }
   export type Where = {
-    type: 'where'
     whereStr?: string
-    not?: string
-    open?: '('
-    left: string
-    op: WhereOp
-    right: string
-    close?: ')'
-    next?: {
-      op: WhereOp
-      where: Where
-    }
+    expr: WhereExpr
   }
-  export type WhereOp = string
+  export type WhereExpr =
+    | {
+        type: 'compare'
+        left: WhereExpr | string
+        op: string
+        right: WhereExpr | string
+      }
+    | {
+        type: 'not'
+        notStr?: 'not' | string
+        expr: WhereExpr
+      }
+    | {
+        type: 'parenthesis'
+        expr: WhereExpr
+      }
 }
 
 export function parse(tokens: Token.Any[]): AST.Expression {
@@ -361,40 +366,57 @@ function parseWhere(
   tableName: string,
 ): { rest: Token.Any[]; where?: AST.Where } {
   let rest = skipNewline(tokens)
-  if (isWord(rest[0], 'where')) {
-    const whereStr = (rest[0] as Token.Word).value
-    rest = rest.slice(1)
-    const partResult = parseWherePart(rest, tableName)
-    if (whereStr !== 'where') {
-      partResult.where.whereStr = whereStr
-    }
-    return partResult
+  if (!isWord(rest[0], 'where')) {
+    return { rest }
   }
-  return { rest }
+  const whereStr = remarkStr(rest[0], 'where')
+  rest = rest.slice(1)
+  const partResult = parseWhereExpr(rest, tableName)
+  rest = partResult.rest
+  const expr = partResult.expr
+  const where: AST.Where = { expr }
+  if (whereStr) {
+    where.whereStr = whereStr
+  }
+  return { rest, where }
 }
 
-function parseWherePart(
+function parseWhereExpr(
   tokens: Token.Any[],
   tableName: string,
-): { where: AST.Where; rest: Token.Any[] } {
+): { expr: AST.WhereExpr; rest: Token.Any[] } {
   let rest = tokens
   rest = skipNewline(rest)
   if (rest.length === 0) {
     throw new Error(`empty where statement after table "${tableName}"`)
   }
 
-  let not: string | undefined
   if (isWord(rest[0], 'not')) {
-    not = (rest[0] as Token.Word).value
+    const notStr = remarkStr(rest[0], 'not')
     rest = rest.slice(1)
-    rest = skipNewline(rest)
+    const result = parseWhereExpr(rest, tableName)
+    rest = result.rest
+    let expr = result.expr
+    expr = { type: 'not', expr }
+    if (notStr) {
+      expr.notStr = notStr
+    }
+    return { rest, expr }
   }
 
-  let open: '(' | undefined
   if (isSymbol(rest[0], '(')) {
-    open = '('
     rest = rest.slice(1)
+    const result = parseWhereExpr(rest, tableName)
+    rest = result.rest
+    const expr = result.expr
     rest = skipNewline(rest)
+    if (!isSymbol(rest[0], ')')) {
+      throw new Error(
+        `missing close parenthesis in where statement after table "${tableName}"`,
+      )
+    }
+    rest = rest.slice(1)
+    return { rest, expr: { type: 'parenthesis', expr } }
   }
 
   const leftResult = parseWord(
@@ -420,39 +442,27 @@ function parseWherePart(
 
   rest = skipNewline(rest)
 
-  let close: ')' | undefined
-  if (isSymbol(rest[0], ')')) {
-    close = ')'
-    rest = rest.slice(1)
-    rest = skipNewline(rest)
-  }
+  let expr: AST.WhereExpr = { type: 'compare', left, op, right }
 
-  const where: AST.Where = { type: 'where', left, op, right }
-  if (not) {
-    where.not = not
-  }
-  if (open) {
-    where.open = open
-  }
-  if (close) {
-    where.close = close
-  }
-
-  if (rest.length > 0 && rest[0].type === 'word') {
+  check_logic: while (rest.length > 0 && rest[0].type === 'word') {
     const word = rest[0].value.toLowerCase()
     switch (word) {
       case 'and':
       case 'or': {
         const op = rest[0].value
         rest = rest.slice(1)
-        const wherePartResult = parseWherePart(rest, tableName)
-        rest = wherePartResult.rest
-        where.next = { op, where: wherePartResult.where }
+        const exprResult = parseWhereExpr(rest, tableName)
+        rest = exprResult.rest
+        expr = { type: 'compare', left: expr, op, right: exprResult.expr }
+        rest = skipNewline(rest)
+        continue
       }
+      default:
+        break check_logic
     }
   }
 
-  return { where, rest }
+  return { expr, rest }
 }
 
 function isWord(token: Token.Any | undefined, word: string) {
@@ -467,4 +477,10 @@ function isSymbol(token: Token.Any | undefined, symbol: string) {
   return (
     token && token.type === 'symbol' && token.value.toLowerCase() === symbol
   )
+}
+
+function remarkStr(word: Token.Any, expect: string): string | undefined {
+  if (word.type === 'word' && word.value !== expect) {
+    return word.value
+  }
 }

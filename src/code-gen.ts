@@ -51,12 +51,15 @@ ${fromSQL}
       pickWhereStrFromConditions(whereConditions) || 'where'
     sql += whereStr + ' '
     if (whereConditions.length === 1) {
-      sql += whereToSQL(whereConditions[0])
+      sql += whereToSQL(
+        whereConditions[0].tableName,
+        whereConditions[0].where.expr,
+      )
     } else {
       sql += whereConditions
         .map(condition => {
-          let sql = whereToSQL(condition)
-          if (hasOr(condition.where)) {
+          let sql = whereToSQL(condition.tableName, condition.where.expr)
+          if (hasOr(condition.where.expr)) {
             sql = `(${sql})`
           }
           return sql
@@ -98,53 +101,61 @@ function shouldAddTablePrefix(field: string): boolean {
   return !(+field || field.includes('.'))
 }
 
-function whereToSQL(whereCondition: WhereCondition): string {
-  const { tableName, where } = whereCondition
-  let { left, right } = where
-  if (shouldAddTablePrefix(left)) {
-    left = tableName + '.' + left
+function whereToSQL(tableName: string, expr: AST.WhereExpr | string): string {
+  if (typeof expr === 'string') {
+    if (shouldAddTablePrefix(expr)) {
+      expr = tableName + '.' + expr
+    }
+    return expr
   }
-  if (shouldAddTablePrefix(right)) {
-    right = tableName + '.' + right
+  switch (expr.type) {
+    case 'not': {
+      const notStr = expr.notStr || 'not'
+      return notStr + ' ' + whereToSQL(tableName, expr.expr)
+    }
+    case 'parenthesis': {
+      return '(' + whereToSQL(tableName, expr.expr) + ')'
+    }
+    case 'compare': {
+      let sql = whereToSQL(tableName, expr.left)
+      switch (expr.op.toLowerCase()) {
+        case 'and':
+          sql += '\n  ' + expr.op
+          break
+        case 'or':
+          sql += '\n   ' + expr.op
+          break
+        default:
+          sql += ' ' + expr.op
+      }
+      sql += ' ' + whereToSQL(tableName, expr.right)
+      return sql
+    }
   }
-  let sql = [left, where.op, right].join(' ')
-  if (where.not) {
-    sql = where.not + ' ' + sql
-  }
-  if (where.open) {
-    sql = where.open + sql
-  }
-  if (where.close) {
-    sql += where.close
-  }
-  const { next } = where
-  if (next) {
-    const space = ' '.repeat('where'.length - next.op.length)
-    sql +=
-      `\n${space}${next.op} ` + whereToSQL({ tableName, where: next.where })
-  }
-  return sql
 }
 
-function hasOr(where: AST.Where): boolean {
-  if (where.op.toLowerCase() === 'or') return true
-  if (where.next) {
-    if (where.next.op.toLowerCase() === 'or') return true
-    if (where.next) return hasOr(where.next.where)
+function hasOr(where: AST.WhereExpr): boolean {
+  for (;;) {
+    switch (where.type) {
+      case 'not':
+      case 'parenthesis':
+        where = where.expr
+        continue
+      case 'compare':
+        return (
+          where.op.toLowerCase() === 'or' ||
+          (typeof where.left !== 'string' && hasOr(where.left)) ||
+          (typeof where.right !== 'string' && hasOr(where.right))
+        )
+    }
   }
-  return false
 }
 
 function pickWhereStrFromConditions(
   whereConditions: WhereCondition[],
 ): string | undefined {
   for (const condition of whereConditions) {
-    const str = pickWhereStrFromAST(condition.where)
-    if (str) return str
+    const where = condition.where
+    if (where.whereStr) return where.whereStr
   }
-}
-
-function pickWhereStrFromAST(where: AST.Where): string | undefined {
-  if (where.whereStr) return where.whereStr
-  if (where.next) return pickWhereStrFromAST(where.next.where)
 }
