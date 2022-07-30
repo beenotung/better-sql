@@ -1172,29 +1172,29 @@ WHERE AUTHOR_ID = :AUTHOR_ID
               type: 'compare',
               left: {
                 type: 'compare',
+                left: 'AUTHOR_ID',
+                op: '=',
+                right: ':AUTHOR_ID',
+              },
+              op: 'AND',
+              right: {
+                type: 'compare',
                 left: {
-                  type: 'compare',
-                  left: 'AUTHOR_ID',
-                  op: '=',
-                  right: ':AUTHOR_ID',
-                },
-                op: 'AND',
-                right: {
                   type: 'compare',
                   left: 'TYPE_ID',
                   op: '=',
                   right: ':Type_ID',
                 },
-              },
-              op: 'OR',
-              right: {
-                type: 'not',
-                notStr: 'NOT',
-                expr: {
-                  type: 'compare',
-                  left: 'DELETE_TIME',
-                  op: 'IS',
-                  right: 'NULL',
+                op: 'OR',
+                right: {
+                  type: 'not',
+                  notStr: 'NOT',
+                  expr: {
+                    type: 'compare',
+                    left: 'DELETE_TIME',
+                    op: 'IS',
+                    right: 'NULL',
+                  },
                 },
               },
             },
