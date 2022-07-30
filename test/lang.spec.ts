@@ -2,13 +2,17 @@ import { expect } from 'chai'
 import { AST, decode } from '../src/parse'
 import { generateSQL } from '../src/code-gen'
 
+function expectAST<T extends AST.Expression>(actual: T, expected: T) {
+  expect(actual).to.deep.equals(expected)
+}
+
 describe('language TestSuit', () => {
   context('select expression', () => {
     context('single/multi row', () => {
       it('should parse multi-row select expression', () => {
         let query = `select user [ id ]`
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -28,7 +32,7 @@ from user
       it('should parse single-row select expression', () => {
         let query = `select user { id }`
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -51,7 +55,7 @@ limit 1
       it('should parse inline expression', () => {
         let query = `select user { id, nickname }`
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -81,7 +85,7 @@ select user {
 }
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -115,7 +119,7 @@ select post [
 ]
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -152,7 +156,7 @@ select post [
 ]
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -196,7 +200,7 @@ select cart [
 ]
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -254,7 +258,7 @@ select post [
 ]
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -282,7 +286,7 @@ from post
       it('should parse inline column alias', () => {
         let query = `select post [ id, title as post_title, author_id ]`
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -318,7 +322,7 @@ select post [
 ]
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -354,7 +358,7 @@ inner join author on author.id = post.author_id
       it('should parse table name alias', () => {
         let query = `select thread as post [ id ]`
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -387,7 +391,7 @@ select thread as post [
 ]
 `
         let ast = decode(query)
-        expect(ast).to.deep.equals({
+        expectAST(ast, {
           type: 'select',
           table: {
             type: 'table',
@@ -440,7 +444,14 @@ inner join user as author on author.id = post.author_id
                 { type: 'column', name: 'id' },
                 { type: 'column', name: 'username' },
               ],
-              where: { type: 'where', left: 'is_admin', op: '=', right: '1' },
+              where: {
+                expr: {
+                  type: 'compare',
+                  left: 'is_admin',
+                  op: '=',
+                  right: '1',
+                },
+              },
             },
           }
 
@@ -501,19 +512,23 @@ where user.is_admin = 1
                   single: true,
                   fields: [{ type: 'column', name: 'nickname' }],
                   where: {
-                    type: 'where',
-                    left: 'is_admin',
-                    op: '=',
-                    right: '1',
+                    expr: {
+                      type: 'compare',
+                      left: 'is_admin',
+                      op: '=',
+                      right: '1',
+                    },
                   },
                 },
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                left: 'delete_time',
-                op: 'is',
-                right: 'null',
+                expr: {
+                  type: 'compare',
+                  left: 'delete_time',
+                  op: 'is',
+                  right: 'null',
+                },
               },
             },
           }
@@ -556,7 +571,7 @@ select post [
 ] where user_id = ${variable}
 `
             let ast = decode(query)
-            expect(ast).to.deep.equals({
+            expectAST(ast, {
               type: 'select',
               table: {
                 type: 'table',
@@ -567,10 +582,12 @@ select post [
                   { type: 'column', name: 'title' },
                 ],
                 where: {
-                  type: 'where',
-                  left: 'user_id',
-                  op: '=',
-                  right: variable,
+                  expr: {
+                    type: 'compare',
+                    left: 'user_id',
+                    op: '=',
+                    right: variable,
+                  },
                 },
               },
             })
@@ -603,7 +620,7 @@ where delete_time is null
   and user_id = ?
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -614,14 +631,17 @@ where delete_time is null
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                left: 'delete_time',
-                op: 'is',
-                right: 'null',
-                next: {
+                expr: {
+                  type: 'compare',
+                  left: {
+                    type: 'compare',
+                    left: 'delete_time',
+                    op: 'is',
+                    right: 'null',
+                  },
                   op: 'and',
-                  where: {
-                    type: 'where',
+                  right: {
+                    type: 'compare',
                     left: 'user_id',
                     op: '=',
                     right: '?',
@@ -656,7 +676,7 @@ where delete_time is null
   and user_id = ?
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -671,22 +691,27 @@ where delete_time is null
                   single: true,
                   fields: [{ type: 'column', name: 'nickname' }],
                   where: {
-                    type: 'where',
-                    left: 'is_admin',
-                    op: '=',
-                    right: '1',
+                    expr: {
+                      type: 'compare',
+                      left: 'is_admin',
+                      op: '=',
+                      right: '1',
+                    },
                   },
                 },
               ],
               where: {
-                type: 'where',
-                left: 'delete_time',
-                op: 'is',
-                right: 'null',
-                next: {
+                expr: {
+                  type: 'compare',
+                  left: {
+                    type: 'compare',
+                    left: 'delete_time',
+                    op: 'is',
+                    right: 'null',
+                  },
                   op: 'and',
-                  where: {
-                    type: 'where',
+                  right: {
+                    type: 'compare',
                     left: 'user_id',
                     op: '=',
                     right: '?',
@@ -723,7 +748,7 @@ where type_id = 1
    or type_id = 2
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -734,14 +759,17 @@ where type_id = 1
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                left: 'type_id',
-                op: '=',
-                right: '1',
-                next: {
+                expr: {
+                  type: 'compare',
+                  left: {
+                    type: 'compare',
+                    left: 'type_id',
+                    op: '=',
+                    right: '1',
+                  },
                   op: 'or',
-                  where: {
-                    type: 'where',
+                  right: {
+                    type: 'compare',
                     left: 'type_id',
                     op: '=',
                     right: '2',
@@ -778,7 +806,7 @@ where type_id = 1
    or type_id = 2
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -792,14 +820,17 @@ where type_id = 1
                   single: true,
                   fields: [{ type: 'column', name: 'nickname' }],
                   where: {
-                    type: 'where',
-                    left: 'is_admin',
-                    op: '=',
-                    right: '1',
-                    next: {
+                    expr: {
+                      type: 'compare',
+                      left: {
+                        type: 'compare',
+                        left: 'is_admin',
+                        op: '=',
+                        right: '1',
+                      },
                       op: 'or',
-                      where: {
-                        type: 'where',
+                      right: {
+                        type: 'compare',
                         left: 'is_editor',
                         op: '=',
                         right: '1',
@@ -810,14 +841,17 @@ where type_id = 1
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                left: 'type_id',
-                op: '=',
-                right: '1',
-                next: {
+                expr: {
+                  type: 'compare',
+                  left: {
+                    type: 'compare',
+                    left: 'type_id',
+                    op: '=',
+                    right: '1',
+                  },
                   op: 'or',
-                  where: {
-                    type: 'where',
+                  right: {
+                    type: 'compare',
                     left: 'type_id',
                     op: '=',
                     right: '2',
@@ -854,7 +888,7 @@ select post [
 where not type_id = 1
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -865,11 +899,15 @@ where not type_id = 1
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                left: 'type_id',
-                op: '=',
-                right: '1',
-                not: 'not',
+                expr: {
+                  type: 'not',
+                  expr: {
+                    type: 'compare',
+                    left: 'type_id',
+                    op: '=',
+                    right: '1',
+                  },
+                },
               },
             },
           })
@@ -895,7 +933,7 @@ select post [
 ] where (type_id = 1)
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -906,12 +944,15 @@ select post [
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                open: '(',
-                left: 'type_id',
-                op: '=',
-                right: '1',
-                close: ')',
+                expr: {
+                  type: 'parenthesis',
+                  expr: {
+                    type: 'compare',
+                    left: 'type_id',
+                    op: '=',
+                    right: '1',
+                  },
+                },
               },
             },
           })
@@ -927,6 +968,100 @@ where (post.type_id = 1)
           )
         })
 
+        context('parenthesis around "not" logic', () => {
+          it('should parse parenthesis before "not" logic', () => {
+            let query = `
+select post [
+  id
+  title
+] where (not type_id = 1)
+`
+            let ast = decode(query)
+            expectAST(ast, {
+              type: 'select',
+              table: {
+                type: 'table',
+                name: 'post',
+                single: false,
+                fields: [
+                  { type: 'column', name: 'id' },
+                  { type: 'column', name: 'title' },
+                ],
+                where: {
+                  expr: {
+                    type: 'parenthesis',
+                    expr: {
+                      type: 'not',
+                      expr: {
+                        type: 'compare',
+                        left: 'type_id',
+                        op: '=',
+                        right: '1',
+                      },
+                    },
+                  },
+                },
+              },
+            })
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(
+              `
+select
+  post.id
+, post.title
+from post
+where (not post.type_id = 1)
+`,
+            )
+          })
+
+          it('should parse parenthesis after "not" logic', () => {
+            let query = `
+select post [
+  id
+  title
+] where not (type_id = 1)
+`
+            let ast = decode(query)
+            expectAST(ast, {
+              type: 'select',
+              table: {
+                type: 'table',
+                name: 'post',
+                single: false,
+                fields: [
+                  { type: 'column', name: 'id' },
+                  { type: 'column', name: 'title' },
+                ],
+                where: {
+                  expr: {
+                    type: 'not',
+                    expr: {
+                      type: 'parenthesis',
+                      expr: {
+                        type: 'compare',
+                        left: 'type_id',
+                        op: '=',
+                        right: '1',
+                      },
+                    },
+                  },
+                },
+              },
+            })
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(
+              `
+select
+  post.id
+, post.title
+from post
+where not (post.type_id = 1)
+`,
+            )
+          })
+        })
+
         it('should parse multi parenthesis groups', () => {
           let query = `
 select post [
@@ -936,7 +1071,7 @@ select post [
     and (type_id = 1 or type_id = 2)
 `
           let ast = decode(query)
-          expect(ast).to.deep.equals({
+          expectAST(ast, {
             type: 'select',
             table: {
               type: 'table',
@@ -947,37 +1082,44 @@ select post [
                 { type: 'column', name: 'title' },
               ],
               where: {
-                type: 'where',
-                open: '(',
-                left: 'delete_time',
-                op: 'is',
-                right: 'null',
-                next: {
-                  op: 'or',
-                  where: {
-                    type: 'where',
-                    left: 'recover_time',
-                    op: 'is not',
-                    right: 'null',
-                    close: ')',
-                    next: {
-                      op: 'and',
-                      where: {
-                        type: 'where',
-                        open: '(',
+                expr: {
+                  type: 'compare',
+                  left: {
+                    type: 'parenthesis',
+                    expr: {
+                      type: 'compare',
+                      left: {
+                        type: 'compare',
+                        left: 'delete_time',
+                        op: 'is',
+                        right: 'null',
+                      },
+                      op: 'or',
+                      right: {
+                        type: 'compare',
+                        left: 'recover_time',
+                        op: 'is not',
+                        right: 'null',
+                      },
+                    },
+                  },
+                  op: 'and',
+                  right: {
+                    type: 'parenthesis',
+                    expr: {
+                      type: 'compare',
+                      left: {
+                        type: 'compare',
                         left: 'type_id',
                         op: '=',
                         right: '1',
-                        next: {
-                          op: 'or',
-                          where: {
-                            type: 'where',
-                            left: 'type_id',
-                            op: '=',
-                            right: '2',
-                            close: ')',
-                          },
-                        },
+                      },
+                      op: 'or',
+                      right: {
+                        type: 'compare',
+                        left: 'type_id',
+                        op: '=',
+                        right: '2',
                       },
                     },
                   },
@@ -1013,7 +1155,7 @@ WHERE AUTHOR_ID = :AUTHOR_ID
    OR NOT DELETE_TIME IS NULL
 `
       let ast = decode(query)
-      expect(ast).to.deep.equals({
+      expectAST(ast, {
         type: 'select',
         selectStr: 'SELECT',
         table: {
@@ -1025,27 +1167,34 @@ WHERE AUTHOR_ID = :AUTHOR_ID
             { type: 'column', name: 'TITLE' },
           ],
           where: {
-            type: 'where',
             whereStr: 'WHERE',
-            left: 'AUTHOR_ID',
-            op: '=',
-            right: ':AUTHOR_ID',
-            next: {
-              op: 'AND',
-              where: {
-                type: 'where',
-                left: 'TYPE_ID',
-                op: '=',
-                right: ':Type_ID',
-                next: {
-                  op: 'OR',
-                  where: {
-                    type: 'where',
-                    not: 'NOT',
-                    left: 'DELETE_TIME',
-                    op: 'IS',
-                    right: 'NULL',
-                  },
+            expr: {
+              type: 'compare',
+              left: {
+                type: 'compare',
+                left: {
+                  type: 'compare',
+                  left: 'AUTHOR_ID',
+                  op: '=',
+                  right: ':AUTHOR_ID',
+                },
+                op: 'AND',
+                right: {
+                  type: 'compare',
+                  left: 'TYPE_ID',
+                  op: '=',
+                  right: ':Type_ID',
+                },
+              },
+              op: 'OR',
+              right: {
+                type: 'not',
+                notStr: 'NOT',
+                expr: {
+                  type: 'compare',
+                  left: 'DELETE_TIME',
+                  op: 'IS',
+                  right: 'NULL',
                 },
               },
             },
