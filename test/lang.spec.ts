@@ -597,7 +597,7 @@ where post.user_id = ${variable}
           let query = `
 select post [
   id
-, title
+  title
 ]
 where delete_time is null
   and user_id = ?
@@ -647,8 +647,8 @@ where post.delete_time is null
           let query = `
 select post [
   id
-, title
-, author {
+  title
+  author {
   nickname
 } where is_admin = 1
 ]
@@ -717,7 +717,7 @@ where author.is_admin = 1
           let query = `
 select post [
   id
-, title
+  title
 ]
 where type_id = 1
    or type_id = 2
@@ -767,12 +767,12 @@ where post.type_id = 1
           let query = `
 select post [
   id
-, author {
+  author {
     nickname
   }
   where is_admin = 1
      or is_editor = 1
-, title
+  title
 ]
 where type_id = 1
    or type_id = 2
@@ -849,7 +849,7 @@ where (author.is_admin = 1
           let query = `
 select post [
   id
-, title
+  title
 ]
 where not type_id = 1
 `
@@ -891,7 +891,7 @@ where not post.type_id = 1
           let query = `
 select post [
   id
-, title
+  title
 ] where (type_id = 1)
 `
           let ast = decode(query)
@@ -931,7 +931,7 @@ where (post.type_id = 1)
           let query = `
 select post [
   id
-, title
+  title
 ] where (delete_time is null or recover_time is not null)
     and (type_id = 1 or type_id = 2)
 `
