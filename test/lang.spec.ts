@@ -547,7 +547,7 @@ where author.is_admin = 1
       })
 
       context('where condition with variables', () => {
-        function test(variable) {
+        function test(variable: string) {
           it(`should parse "${variable}"`, () => {
             let query = `
 select post [
