@@ -33,7 +33,7 @@ export function tokenize(text: string): Token.Any[] {
     .forEach(line => {
       tokens.push({ type: 'newline' })
       let rest = line
-      for (;;) {
+      main: for (;;) {
         rest = rest.trim()
 
         for (const keyword of keywords) {
@@ -43,7 +43,7 @@ export function tokenize(text: string): Token.Any[] {
           ) {
             rest = rest.slice(keyword.length)
             tokens.push({ type: 'symbol', value: keyword })
-            continue
+            continue main
           }
         }
 
@@ -73,10 +73,6 @@ export function tokenize(text: string): Token.Any[] {
 
         const char = rest[0]
         if (!char) return
-        if (char == ' ') {
-          rest = rest.trim()
-          continue
-        }
         if (char in symbols) {
           rest = rest.slice(1)
           tokens.push({ type: 'symbol', value: char })
