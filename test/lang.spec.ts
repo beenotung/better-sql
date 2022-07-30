@@ -142,7 +142,7 @@ inner join author on author.id = post.author_id
 `)
       })
 
- it('should parse single left join select', () => {
+      it('should parse single left join select', () => {
         let query = `
 select post [
   title
