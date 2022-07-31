@@ -1248,6 +1248,61 @@ group by
 , post.version
 `)
       })
+
+      it('should parse multi group by columns on nested tables', () => {
+        let query = `
+select post [
+  author_id
+  author {
+    nickname
+    grade
+    cohort
+  } group by grade, cohort
+  version
+] group by author_id, version
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'author_id' },
+              {
+                type: 'table',
+                name: 'author',
+                single: true,
+                fields: [
+                  { type: 'column', name: 'nickname' },
+                  { type: 'column', name: 'grade' },
+                  { type: 'column', name: 'cohort' },
+                ],
+                groupBy: { fields: ['grade', 'cohort'] },
+              },
+              { type: 'column', name: 'version' },
+            ],
+            groupBy: { fields: ['author_id', 'version'] },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.author_id
+, author.nickname
+, author.grade
+, author.cohort
+, post.version
+from post
+inner join author on author.id = post.author_id
+group by
+  author.grade
+, author.cohort
+, post.author_id
+, post.version
+`)
+      })
     })
 
     it('should preserve original upper/lower case in the query', () => {
