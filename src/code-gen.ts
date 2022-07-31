@@ -28,16 +28,6 @@ export function generateSQL(ast: AST.Select): string {
     const tableName = table.alias || table.name
     const { where, groupBy } = table
 
-    if (groupBy) {
-      groupByStr = groupByStr || groupBy.groupByStr
-      groupBy.fields.forEach(field => {
-        if (shouldAddTablePrefix(field)) {
-          field = tableName + '.' + field
-        }
-        groupByFields.push(field)
-      })
-    }
-
     table.fields.forEach(field => {
       if (field.type === 'column') {
         selectFields.push(tableName + '.' + nameToSQL(field))
@@ -52,6 +42,15 @@ ${join} ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
     })
     if (where) {
       whereConditions.push({ tableName, where })
+    }
+    if (groupBy) {
+      groupByStr = groupByStr || groupBy.groupByStr
+      groupBy.fields.forEach(field => {
+        if (shouldAddTablePrefix(field)) {
+          field = tableName + '.' + field
+        }
+        groupByFields.push(field)
+      })
     }
   }
 

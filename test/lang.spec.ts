@@ -1170,6 +1170,51 @@ group by
   post.author_id
 `)
       })
+
+      it('should parse group by columns in nested tables', () => {
+        let query = `
+select post [
+  author_id
+  created_at
+  author {
+    nickname
+  } group by cohort
+] group by type_id
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'author_id' },
+              { type: 'column', name: 'created_at' },
+              {
+                type: 'table',
+                name: 'author',
+                single: true,
+                fields: [{ type: 'column', name: 'nickname' }],
+                groupBy: { fields: ['cohort'] },
+              },
+            ],
+            groupBy: { fields: ['type_id'] },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.author_id
+, post.created_at
+, author.nickname
+from post
+inner join author on author.id = post.author_id
+group by
+  author.cohort
+, post.type_id
+`)
+      })
     })
 
     it('should preserve original upper/lower case in the query', () => {

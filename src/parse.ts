@@ -298,6 +298,9 @@ function parseFields(tokens: Token.Any[], tableName: string) {
       if (fieldsResult.where) {
         table.where = fieldsResult.where
       }
+      if (fieldsResult.groupBy) {
+        table.groupBy = fieldsResult.groupBy
+      }
       fields.push(table)
       continue
     }
