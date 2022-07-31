@@ -22,7 +22,7 @@ describe('language TestSuit', () => {
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   user.id
 from user
@@ -42,7 +42,7 @@ from user
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   user.id
 from user
@@ -68,7 +68,7 @@ limit 1
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   user.id
 , user.nickname
@@ -98,7 +98,7 @@ select user {
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   user.id
 , user.nickname
@@ -137,7 +137,7 @@ select post [
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   post.title
 , author.nickname
@@ -174,7 +174,7 @@ select post [
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   post.title
 , author.nickname
@@ -233,7 +233,7 @@ select cart [
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(`
+        expect(sql).to.equals(/* sql */ `
 select
   cart.user_id
 , user.nickname
@@ -272,15 +272,13 @@ select post [
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(
-          `
+        expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title as post_title
 , post.author_id
 from post
-`,
-        )
+`)
       })
 
       it('should parse inline column alias', () => {
@@ -300,15 +298,13 @@ from post
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(
-          `
+        expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title as post_title
 , post.author_id
 from post
-`,
-        )
+`)
       })
 
       it('should parse column alias in nested select', () => {
@@ -341,16 +337,14 @@ select post [
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(
-          `
+        expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title as post_title
 , author.nickname as author
 from post
 inner join author on author.id = post.author_id
-`,
-        )
+`)
       })
     })
 
@@ -369,13 +363,11 @@ inner join author on author.id = post.author_id
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(
-          `
+        expect(sql).to.equals(/* sql */ `
 select
   post.id
 from thread as post
-`,
-        )
+`)
       })
 
       it('should parse nested table name alias', () => {
@@ -416,8 +408,7 @@ select thread as post [
           },
         })
         let sql = generateSQL(ast)
-        expect(sql).to.equals(
-          `
+        expect(sql).to.equals(/* sql */ `
 select
   post.id
 , author.username
@@ -426,8 +417,7 @@ select
 , post.title
 from thread as post
 inner join user as author on author.id = post.author_id
-`,
-        )
+`)
       })
     })
 
@@ -464,15 +454,13 @@ select user [
 `
             expect(decode(query)).to.deep.equals(ast)
             let sql = generateSQL(ast)
-            expect(sql).to.equals(
-              `
+            expect(sql).to.equals(/* sql */ `
 select
   user.id
 , user.username
 from user
 where user.is_admin = 1
-`,
-            )
+`)
           })
 
           it('should parse multiline where condition', () => {
@@ -485,15 +473,13 @@ where is_admin = 1
 `
             expect(decode(query)).to.deep.equals(ast)
             let sql = generateSQL(ast)
-            expect(sql).to.equals(
-              `
+            expect(sql).to.equals(/* sql */ `
 select
   user.id
 , user.username
 from user
 where user.is_admin = 1
-`,
-            )
+`)
           })
         })
 
@@ -545,8 +531,7 @@ select post [
 `
             expect(decode(query)).to.deep.equals(ast)
             let sql = generateSQL(ast)
-            expect(sql).to.equals(
-              `
+            expect(sql).to.equals(/* sql */ `
 select
   post.id
 , author.nickname
@@ -555,8 +540,7 @@ from post
 inner join author on author.id = post.author_id
 where author.is_admin = 1
   and post.delete_time is null
-`,
-            )
+`)
           })
         })
       })
@@ -592,15 +576,13 @@ select post [
               },
             })
             let sql = generateSQL(ast)
-            expect(sql).to.equals(
-              `
+            expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where post.user_id = ${variable}
-`,
-            )
+`)
           })
         }
         test(':user_id')
@@ -651,16 +633,14 @@ where delete_time is null
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where post.delete_time is null
   and post.user_id = ?
-`,
-          )
+`)
         })
 
         it('should parse multiple column where statement with "and" logic on nested table', () => {
@@ -721,8 +701,7 @@ where delete_time is null
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
@@ -732,8 +711,7 @@ inner join author on author.id = post.author_id
 where author.is_admin = 1
   and post.delete_time is null
   and post.user_id = ?
-`,
-          )
+`)
         })
       })
 
@@ -779,16 +757,14 @@ where type_id = 1
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where post.type_id = 1
    or post.type_id = 2
-`,
-          )
+`)
         })
 
         it('should parse "or" logic on nested table select', () => {
@@ -861,8 +837,7 @@ where type_id = 1
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , author.nickname
@@ -873,8 +848,7 @@ where (author.is_admin = 1
    or author.is_editor = 1)
   and (post.type_id = 1
    or post.type_id = 2)
-`,
-          )
+`)
         })
       })
 
@@ -912,15 +886,13 @@ where not type_id = 1
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where not post.type_id = 1
-`,
-          )
+`)
         })
       })
 
@@ -957,15 +929,13 @@ select post [
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where (post.type_id = 1)
-`,
-          )
+`)
         })
 
         context('parenthesis around "not" logic', () => {
@@ -1004,15 +974,13 @@ select post [
               },
             })
             let sql = generateSQL(ast)
-            expect(sql).to.equals(
-              `
+            expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where (not post.type_id = 1)
-`,
-            )
+`)
           })
 
           it('should parse parenthesis after "not" logic', () => {
@@ -1050,15 +1018,13 @@ select post [
               },
             })
             let sql = generateSQL(ast)
-            expect(sql).to.equals(
-              `
+            expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
 from post
 where not (post.type_id = 1)
-`,
-            )
+`)
           })
         })
 
@@ -1128,8 +1094,7 @@ select post [
             },
           })
           let sql = generateSQL(ast)
-          expect(sql).to.equals(
-            `
+          expect(sql).to.equals(/* sql */ `
 select
   post.id
 , post.title
@@ -1138,8 +1103,7 @@ where (post.delete_time is null
    or post.recover_time is not null)
   and (post.type_id = 1
    or post.type_id = 2)
-`,
-          )
+`)
         })
       })
     })
@@ -1202,8 +1166,7 @@ WHERE AUTHOR_ID = :AUTHOR_ID
         },
       })
       let sql = generateSQL(ast)
-      expect(sql).to.equals(
-        `
+      expect(sql).to.equals(/* sql */ `
 SELECT
   POST.ID
 , POST.TITLE
@@ -1211,8 +1174,7 @@ FROM POST
 WHERE POST.AUTHOR_ID = :AUTHOR_ID
   AND POST.TYPE_ID = :Type_ID
    OR NOT POST.DELETE_TIME IS NULL
-`,
-      )
+`)
     })
   })
 })
