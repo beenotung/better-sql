@@ -1,7 +1,11 @@
 export function decode(text: string) {
   const tokens = tokenize(text)
-  const root = parse(tokens)
-  return root
+  const { rest, ast } = parse(tokens)
+  if (rest.length > 0) {
+    console.error('unconsumed tokens:', rest)
+    throw new Error(`unexpected token: "${rest[0].type}"`)
+  }
+  return ast
 }
 
 export namespace Token {
@@ -136,26 +140,31 @@ export namespace AST {
       }
 }
 
-export function parse(tokens: Token.Any[]): AST.Expression {
-  if (tokens.length === 0) {
+export function parse(tokens: Token.Any[]) {
+  let rest = skipNewline(tokens)
+  if (rest.length === 0) {
     throw new Error('empty tokens')
   }
-  const token = tokens[0]
-  if (isWord(token, 'select')) {
+  if (isWord(rest[0], 'select')) {
+    const selectStr = remarkStr(rest[0], 'select')
+    rest = rest.slice(1)
+    let tableResult = parseTable(rest)
+    rest = tableResult.rest
+    rest = skipNewline(rest)
+    let { table } = tableResult
     const ast: AST.Select = {
       type: 'select',
-      table: parseTable(tokens.slice(1)),
+      table,
     }
-    const selectStr = (token as Token.Word).value
-    if (selectStr !== 'select') {
+    if (selectStr) {
       ast.selectStr = selectStr
     }
-    return ast
+    return { ast, rest }
   }
   throw new Error('missing "select" token')
 }
 
-function parseTable(tokens: Token.Any[]): AST.Table {
+function parseTable(tokens: Token.Any[]) {
   let rest = tokens
 
   const tableNameResult = parseWord(rest, 'table name')
@@ -186,7 +195,7 @@ function parseTable(tokens: Token.Any[]): AST.Table {
   if (where) {
     table.where = where
   }
-  return table
+  return { table, rest }
 }
 
 function parseFields(tokens: Token.Any[], tableName: string) {
