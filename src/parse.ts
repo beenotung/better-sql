@@ -112,6 +112,7 @@ export namespace AST {
     join?: string
     fields: Field[]
     where?: Where
+    groupBy?: GroupBy
   }
   export type Field = Column | Table
   export type Column = {
@@ -139,6 +140,10 @@ export namespace AST {
         type: 'parenthesis'
         expr: WhereExpr
       }
+  export type GroupBy = {
+    groupByStr?: string
+    fields: string[]
+  }
 }
 
 export function parse(tokens: Token.Any[]) {
@@ -200,7 +205,7 @@ function parseTable(tokens: Token.Any[]) {
 
   const fieldResult = parseFields(rest, tableName)
   rest = fieldResult.rest
-  const { single, fields, where } = fieldResult
+  const { single, fields, where, groupBy } = fieldResult
 
   const table: AST.Table = { type: 'table', name: tableName, single, fields }
   if (alias) {
@@ -208,6 +213,9 @@ function parseTable(tokens: Token.Any[]) {
   }
   if (where) {
     table.where = where
+  }
+  if (groupBy) {
+    table.groupBy = groupBy
   }
   return { table, rest }
 }
@@ -303,7 +311,11 @@ function parseFields(tokens: Token.Any[], tableName: string) {
   rest = whereResult.rest
   const { where } = whereResult
 
-  return { single, fields, rest, where }
+  const groupByResult = parseGroupBy(rest, tableName)
+  rest = groupByResult.rest
+  const { groupBy } = groupByResult
+
+  return { single, fields, rest, where, groupBy }
 }
 
 function parseWord(tokens: Token.Any[], name: string) {
@@ -506,4 +518,43 @@ function remarkStr(word: Token.Any, expect: string): string | undefined {
   if (word.type === 'word' && word.value !== expect) {
     return word.value
   }
+}
+
+function parseGroupBy(
+  tokens: Token.Any[],
+  tableName: string,
+): { rest: Token.Any[]; groupBy?: AST.GroupBy } {
+  let rest = skipNewline(tokens)
+
+  if (!(isWord(rest[0], 'group') && isWord(rest[1], 'by'))) {
+    return { rest }
+  }
+
+  const groupByStr: string | undefined =
+    (rest[0] as Token.Word).value + ' ' + (rest[1] as Token.Word).value
+  rest = rest.slice(2)
+  rest = skipNewline(rest)
+
+  if (rest.length === 0) {
+    throw new Error(`empty "group by" statement after table "${tableName}"`)
+  }
+
+  const fields: string[] = []
+  for (; rest.length > 0; ) {
+    const token = rest[0]
+    if (token.type === 'word') {
+      fields.push(token.value)
+      rest = rest.slice(1)
+      continue
+    }
+    break
+  }
+
+  const ast: AST.GroupBy = { fields }
+
+  if (groupByStr !== 'group by') {
+    ast.groupByStr = groupByStr
+  }
+
+  return { rest, groupBy: ast }
 }

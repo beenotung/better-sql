@@ -21,9 +21,22 @@ export function generateSQL(ast: AST.Select): string {
   let fromSQL = fromStr + ' ' + nameToSQL(table)
   const whereConditions: WhereCondition[] = []
 
+  let groupByStr: string | undefined
+  const groupByFields: string[] = []
+
   function processTable(table: AST.Table) {
     const tableName = table.alias || table.name
-    const { where } = table
+    const { where, groupBy } = table
+
+    if (groupBy) {
+      groupByStr = groupByStr || groupBy.groupByStr
+      groupBy.fields.forEach(field => {
+        if (shouldAddTablePrefix(field)) {
+          field = tableName + '.' + field
+        }
+        groupByFields.push(field)
+      })
+    }
 
     table.fields.forEach(field => {
       if (field.type === 'column') {
@@ -74,6 +87,15 @@ ${fromSQL}
     sql += `
 `
   }
+
+  if (groupByFields.length > 0) {
+    groupByStr = groupByStr || 'group by'
+    sql += `${groupByStr}
+  ${groupByFields.join(`
+, `)}
+`
+  }
+
   if (table.single) {
     sql += `limit 1
 `
