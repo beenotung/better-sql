@@ -1108,11 +1108,41 @@ where (post.delete_time is null
       })
     })
 
+    it('should parse distinct select', () => {
+      let query = `
+select distinct post [
+  title
+  version
+]
+`
+      let ast = decode(query)
+      expectAST(ast, {
+        type: 'select',
+        distinct: 'distinct',
+        table: {
+          type: 'table',
+          name: 'post',
+          single: false,
+          fields: [
+            { type: 'column', name: 'title' },
+            { type: 'column', name: 'version' },
+          ],
+        },
+      })
+      let sql = generateSQL(ast)
+      expect(sql).to.equals(/* sql */ `
+select distinct
+  post.title
+, post.version
+from post
+`)
+    })
+
     it('should preserve original upper/lower case in the query', () => {
       let query = `
-SELECT POST [
-  ID
-, TITLE
+SELECT DISTINCT POST [
+  VERSION
+  TITLE
 ]
 WHERE AUTHOR_ID = :AUTHOR_ID
   AND TYPE_ID = :Type_ID
@@ -1122,12 +1152,13 @@ WHERE AUTHOR_ID = :AUTHOR_ID
       expectAST(ast, {
         type: 'select',
         selectStr: 'SELECT',
+        distinct: 'DISTINCT',
         table: {
           type: 'table',
           name: 'POST',
           single: false,
           fields: [
-            { type: 'column', name: 'ID' },
+            { type: 'column', name: 'VERSION' },
             { type: 'column', name: 'TITLE' },
           ],
           where: {
@@ -1167,8 +1198,8 @@ WHERE AUTHOR_ID = :AUTHOR_ID
       })
       let sql = generateSQL(ast)
       expect(sql).to.equals(/* sql */ `
-SELECT
-  POST.ID
+SELECT DISTINCT
+  POST.VERSION
 , POST.TITLE
 FROM POST
 WHERE POST.AUTHOR_ID = :AUTHOR_ID

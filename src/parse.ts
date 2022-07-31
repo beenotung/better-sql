@@ -100,6 +100,7 @@ export namespace AST {
   export type Expression = Select
   export type Select = {
     type: 'select'
+    distinct?: string
     selectStr?: string
     table: Table
   }
@@ -148,16 +149,29 @@ export function parse(tokens: Token.Any[]) {
   if (isWord(rest[0], 'select')) {
     const selectStr = remarkStr(rest[0], 'select')
     rest = rest.slice(1)
-    let tableResult = parseTable(rest)
+    rest = skipNewline(rest)
+
+    let distinct: string | undefined
+    if (isWord(rest[0], 'distinct')) {
+      distinct = (rest[0] as Token.Word).value
+      rest = rest.slice(1)
+      rest = skipNewline(rest)
+    }
+
+    const tableResult = parseTable(rest)
     rest = tableResult.rest
     rest = skipNewline(rest)
-    let { table } = tableResult
+
+    const { table } = tableResult
     const ast: AST.Select = {
       type: 'select',
       table,
     }
     if (selectStr) {
       ast.selectStr = selectStr
+    }
+    if (distinct) {
+      ast.distinct = distinct
     }
     return { ast, rest }
   }

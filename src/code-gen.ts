@@ -9,9 +9,14 @@ export function generateSQL(ast: AST.Select): string {
   const table = ast.table
   const selectFields: string[] = []
 
-  const selectStr: string = ast.selectStr || 'select'
+  let selectStr: string = ast.selectStr || 'select'
+
   const fromStr: string =
     selectStr === 'SELECT' ? 'FROM' : selectStr === 'Select' ? 'From' : 'from'
+
+  if (ast.distinct) {
+    selectStr += ' ' + ast.distinct
+  }
 
   let fromSQL = fromStr + ' ' + nameToSQL(table)
   const whereConditions: WhereCondition[] = []
