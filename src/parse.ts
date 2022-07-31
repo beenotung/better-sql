@@ -544,7 +544,7 @@ function parseGroupBy(
 
   const fields: string[] = []
 
-  let word = parseWord(
+  const word = parseWord(
     rest,
     `first field name of "group by" statement after table "${tableName}"`,
   )
@@ -556,7 +556,7 @@ function parseGroupBy(
       break
     }
     rest = rest.slice(1)
-    let word = parseWord(
+    const word = parseWord(
       rest,
       `more field name of "group by" statement after table "${tableName}"`,
     )
