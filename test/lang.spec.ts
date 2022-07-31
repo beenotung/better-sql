@@ -1215,6 +1215,39 @@ group by
 , post.type_id
 `)
       })
+
+      it('should parse multi group by columns on single table', () => {
+        let query = `
+select post [
+  author_id
+  created_at
+] group by author_id, version
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'author_id' },
+              { type: 'column', name: 'created_at' },
+            ],
+            groupBy: { fields: ['author_id', 'version'] },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.author_id
+, post.created_at
+from post
+group by
+  post.author_id
+, post.version
+`)
+      })
     })
 
     it('should preserve original upper/lower case in the query', () => {

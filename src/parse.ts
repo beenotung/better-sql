@@ -543,14 +543,25 @@ function parseGroupBy(
   }
 
   const fields: string[] = []
+
+  let word = parseWord(
+    rest,
+    `first field name of "group by" statement after table "${tableName}"`,
+  )
+  rest = word.rest
+  fields.push(word.value)
   for (; rest.length > 0; ) {
-    const token = rest[0]
-    if (token.type === 'word') {
-      fields.push(token.value)
-      rest = rest.slice(1)
-      continue
+    rest = skipNewline(rest)
+    if (!isSymbol(rest[0], ',')) {
+      break
     }
-    break
+    rest = rest.slice(1)
+    let word = parseWord(
+      rest,
+      `more field name of "group by" statement after table "${tableName}"`,
+    )
+    rest = word.rest
+    fields.push(word.value)
   }
 
   const ast: AST.GroupBy = { fields }
