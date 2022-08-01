@@ -1468,6 +1468,7 @@ SELECT DISTINCT POST [
 WHERE AUTHOR_ID = :AUTHOR_ID
   AND TYPE_ID = :Type_ID
    OR NOT DELETE_TIME IS NULL
+GROUP BY VERSION
 ORDER BY VERSION DESC NULLS FIRST
 `
       let ast = decode(query)
@@ -1516,6 +1517,7 @@ ORDER BY VERSION DESC NULLS FIRST
               },
             },
           },
+          groupBy: { groupByStr: 'GROUP BY', fields: ['VERSION'] },
           orderBy: {
             orderByStr: 'ORDER BY',
             fields: [{ name: 'VERSION', order: 'DESC NULLS FIRST' }],
@@ -1531,6 +1533,8 @@ FROM POST
 WHERE POST.AUTHOR_ID = :AUTHOR_ID
   AND POST.TYPE_ID = :Type_ID
    OR NOT POST.DELETE_TIME IS NULL
+GROUP BY
+  POST.VERSION
 ORDER BY
   POST.VERSION DESC NULLS FIRST
 `)
