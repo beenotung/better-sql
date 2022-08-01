@@ -1493,6 +1493,65 @@ order by
       })
     })
 
+    context('"limit" and "offset"', () => {
+      it('should parse explicit "limit"', () => {
+        let query = `
+select post [
+  id
+]
+limit 10
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [{ type: 'column', name: 'id' }],
+            limit: 'limit 10',
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+from post
+limit 10
+`)
+      })
+
+      it('should parse "offset"', () => {
+        let query = `
+select post [
+  id
+]
+limit 10
+offset 20
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [{ type: 'column', name: 'id' }],
+            limit: 'limit 10',
+            offset: 'offset 20',
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+from post
+limit 10
+offset 20
+`)
+      })
+    })
+
     it('should preserve original upper/lower case in the query', () => {
       let query = `
 SELECT DISTINCT THREAD AS POST [
@@ -1504,6 +1563,8 @@ WHERE AUTHOR_ID = :AUTHOR_ID
    OR NOT DELETE_TIME IS NULL
 GROUP BY VERSION
 ORDER BY VERSION COLLATE NOCASE DESC NULLS FIRST
+LIMIT 10
+OFFSET 20
 `
       let ast = decode(query)
       expectAST(ast, {
@@ -1560,6 +1621,8 @@ ORDER BY VERSION COLLATE NOCASE DESC NULLS FIRST
               { name: 'VERSION', order: 'COLLATE NOCASE DESC NULLS FIRST' },
             ],
           },
+          limit: 'LIMIT 10',
+          offset: 'OFFSET 20',
         },
       })
       let sql = generateSQL(ast)
@@ -1575,6 +1638,8 @@ GROUP BY
   POST.VERSION
 ORDER BY
   POST.VERSION COLLATE NOCASE DESC NULLS FIRST
+LIMIT 10
+OFFSET 20
 `)
     })
   })

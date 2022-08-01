@@ -115,6 +115,8 @@ export namespace AST {
     where?: Where
     groupBy?: GroupBy
     orderBy?: OrderBy
+    limit?: string
+    offset?: string
   }
   export type Field = Column | Table
   export type Column = {
@@ -215,20 +217,21 @@ function parseTable(tokens: Token.Any[]) {
     alias = aliasResult.value
   }
 
-  const fieldResult = parseFields(rest, tableName)
-  rest = fieldResult.rest
-  const { single, fields, where, groupBy, orderBy } = fieldResult
+  const fieldsResult = parseFields(rest, tableName)
+  rest = fieldsResult.rest
 
   const table: AST.Table = {
     type: 'table',
     name: tableName,
-    single,
-    fields,
+    single: fieldsResult.single,
+    fields: fieldsResult.fields,
     alias,
     asStr,
-    where,
-    groupBy,
-    orderBy,
+    where: fieldsResult.where,
+    groupBy: fieldsResult.groupBy,
+    orderBy: fieldsResult.orderBy,
+    limit: fieldsResult.limit,
+    offset: fieldsResult.offset,
   }
   trimUndefined(table)
   return { table, rest }
@@ -313,6 +316,8 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         where: fieldsResult.where,
         groupBy: fieldsResult.groupBy,
         orderBy: fieldsResult.orderBy,
+        limit: fieldsResult.limit,
+        offset: fieldsResult.offset,
       }
       trimUndefined(table)
       fields.push(table)
@@ -336,7 +341,31 @@ function parseFields(tokens: Token.Any[], tableName: string) {
   rest = orderByResult.rest
   const { orderBy } = orderByResult
 
-  return { single, fields, rest, where, groupBy, orderBy }
+  rest = skipNewline(rest)
+
+  let limit: string | undefined
+  if (isWord(rest[0], 'limit')) {
+    limit = takeWord(rest[0])
+    rest = rest.slice(1)
+    rest = skipNewline(rest)
+    const word = parseWord(rest, `"limit" after table "${tableName}"`)
+    rest = word.rest
+    rest = skipNewline(rest)
+    limit += ' ' + word.value
+  }
+
+  let offset: string | undefined
+  if (isWord(rest[0], 'offset')) {
+    offset = takeWord(rest[0])
+    rest = rest.slice(1)
+    rest = skipNewline(rest)
+    const word = parseWord(rest, `"offset" after table "${tableName}"`)
+    rest = word.rest
+    rest = skipNewline(rest)
+    offset += ' ' + word.value
+  }
+
+  return { single, fields, rest, where, groupBy, orderBy, limit, offset }
 }
 
 function parseWord(tokens: Token.Any[], name: string) {
