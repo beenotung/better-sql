@@ -126,10 +126,15 @@ ${fromSQL}
   return sql
 }
 
-function nameToSQL(named: { name: string; alias?: string }): string {
+function nameToSQL(named: {
+  name: string
+  alias?: string
+  asStr?: string
+}): string {
+  const asStr = named.asStr || 'as'
   let sql = named.name
   if (named.alias) {
-    sql += ' as ' + named.alias
+    sql += ' ' + asStr + ' ' + named.alias
   }
   return sql
 }

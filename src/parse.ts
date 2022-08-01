@@ -108,6 +108,7 @@ export namespace AST {
     type: 'table'
     name: string
     alias?: string
+    asStr?: string
     single: boolean
     join?: string
     fields: Field[]
@@ -120,6 +121,7 @@ export namespace AST {
     type: 'column'
     name: string
     alias?: string
+    asStr?: string
   }
   export type Where = {
     whereStr?: string
@@ -204,8 +206,9 @@ function parseTable(tokens: Token.Any[]) {
   }
 
   let alias: string | undefined
-  const token = rest[0]
-  if (token.type === 'word' && token.value === 'as') {
+  let asStr: string | undefined
+  if (isWord(rest[0], 'as')) {
+    asStr = remarkStr(rest[0], 'as')
     rest = rest.slice(1)
     const aliasResult = parseWord(rest, `alias of table "${tableName}"`)
     rest = aliasResult.rest
@@ -222,6 +225,7 @@ function parseTable(tokens: Token.Any[]) {
     single,
     fields,
     alias,
+    asStr,
     where,
     groupBy,
     orderBy,
@@ -267,7 +271,7 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     if (token.type === 'word') {
       const value = token.value
       rest = rest.slice(1)
-      if (value === 'as') {
+      if (value.toLowerCase() === 'as') {
         const field = popField(`missing field name before "as" alias`)
         if (field.type === 'table') {
           throw new Error(`expected "as" alias after table "${field.name}"`)
@@ -275,6 +279,9 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         const wordResult = parseWord(rest, `alias of column "${field.name}"`)
         rest = wordResult.rest
         field.alias = wordResult.value
+        if (value !== 'as') {
+          field.asStr = value
+        }
         fields.push(field)
         continue
       }
@@ -302,6 +309,7 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         single: fieldsResult.single,
         fields: fieldsResult.fields,
         alias: field.alias,
+        asStr: field.asStr,
         where: fieldsResult.where,
         groupBy: fieldsResult.groupBy,
         orderBy: fieldsResult.orderBy,

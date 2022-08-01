@@ -1495,8 +1495,8 @@ order by
 
     it('should preserve original upper/lower case in the query', () => {
       let query = `
-SELECT DISTINCT POST [
-  VERSION
+SELECT DISTINCT THREAD AS POST [
+  VER AS VERSION
   TITLE
 ]
 WHERE AUTHOR_ID = :AUTHOR_ID
@@ -1512,10 +1512,12 @@ ORDER BY VERSION COLLATE NOCASE DESC NULLS FIRST
         distinct: 'DISTINCT',
         table: {
           type: 'table',
-          name: 'POST',
+          name: 'THREAD',
+          alias: 'POST',
+          asStr: 'AS',
           single: false,
           fields: [
-            { type: 'column', name: 'VERSION' },
+            { type: 'column', name: 'VER', alias: 'VERSION', asStr: 'AS' },
             { type: 'column', name: 'TITLE' },
           ],
           where: {
@@ -1563,9 +1565,9 @@ ORDER BY VERSION COLLATE NOCASE DESC NULLS FIRST
       let sql = generateSQL(ast)
       expect(sql).to.equals(/* sql */ `
 SELECT DISTINCT
-  POST.VERSION
+  POST.VER AS VERSION
 , POST.TITLE
-FROM POST
+FROM THREAD AS POST
 WHERE POST.AUTHOR_ID = :AUTHOR_ID
   AND POST.TYPE_ID = :Type_ID
    OR NOT POST.DELETE_TIME IS NULL
