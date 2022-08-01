@@ -1552,6 +1552,33 @@ offset 20
       })
     })
 
+    it('should parse "where", "group by", "order by", "limit", "offset" in any order', () => {
+      let query = `
+select post [
+  id
+]
+offset 20
+limit 10
+order by publish_time asc
+group by type_id
+where author_id = :author
+`
+      let ast = decode(query)
+      let sql = generateSQL(ast)
+      expect(sql).to.equals(/* sql */ `
+select
+  post.id
+from post
+where post.author_id = :author
+group by
+  post.type_id
+order by
+  post.publish_time asc
+limit 10
+offset 20
+`)
+    })
+
     it('should preserve original upper/lower case in the query', () => {
       let query = `
 SELECT DISTINCT THREAD AS POST [

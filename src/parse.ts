@@ -329,40 +329,49 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     )
   }
 
-  const whereResult = parseWhere(rest, tableName)
-  rest = whereResult.rest
-  const { where } = whereResult
-
-  const groupByResult = parseGroupBy(rest, tableName)
-  rest = groupByResult.rest
-  const { groupBy } = groupByResult
-
-  const orderByResult = parseOrderBy(rest, tableName)
-  rest = orderByResult.rest
-  const { orderBy } = orderByResult
-
-  rest = skipNewline(rest)
-
+  let where: AST.Where | undefined
+  let groupBy: AST.GroupBy | undefined
+  let orderBy: AST.OrderBy | undefined
   let limit: string | undefined
-  if (isWord(rest[0], 'limit')) {
-    limit = takeWord(rest[0])
-    rest = rest.slice(1)
-    rest = skipNewline(rest)
-    const word = parseWord(rest, `"limit" after table "${tableName}"`)
-    rest = word.rest
-    rest = skipNewline(rest)
-    limit += ' ' + word.value
-  }
-
   let offset: string | undefined
-  if (isWord(rest[0], 'offset')) {
-    offset = takeWord(rest[0])
-    rest = rest.slice(1)
+
+  for (;;) {
     rest = skipNewline(rest)
-    const word = parseWord(rest, `"offset" after table "${tableName}"`)
-    rest = word.rest
-    rest = skipNewline(rest)
-    offset += ' ' + word.value
+    if (isWord(rest[0], 'where')) {
+      const whereResult = parseWhere(rest, tableName)
+      rest = whereResult.rest
+      where = whereResult.where
+      continue
+    }
+    if (isWord(rest[0], 'group') && isWord(rest[1], 'by')) {
+      const groupByResult = parseGroupBy(rest, tableName)
+      rest = groupByResult.rest
+      groupBy = groupByResult.groupBy
+      continue
+    }
+    if (isWord(rest[0], 'order') && isWord(rest[1], 'by')) {
+      const orderByResult = parseOrderBy(rest, tableName)
+      rest = orderByResult.rest
+      orderBy = orderByResult.orderBy
+      continue
+    }
+    if (isWord(rest[0], 'limit')) {
+      limit = takeWord(rest[0])
+      rest = rest.slice(1)
+      const word = parseWord(rest, `"limit" after table "${tableName}"`)
+      rest = word.rest
+      limit += ' ' + word.value
+      continue
+    }
+    if (isWord(rest[0], 'offset')) {
+      offset = takeWord(rest[0])
+      rest = rest.slice(1)
+      const word = parseWord(rest, `"offset" after table "${tableName}"`)
+      rest = word.rest
+      offset += ' ' + word.value
+      continue
+    }
+    break
   }
 
   return { single, fields, rest, where, groupBy, orderBy, limit, offset }
@@ -449,18 +458,15 @@ function skipNewline(tokens: Token.Any[]) {
 function parseWhere(
   tokens: Token.Any[],
   tableName: string,
-): { rest: Token.Any[]; where?: AST.Where } {
+): { rest: Token.Any[]; where: AST.Where } {
   let rest = skipNewline(tokens)
-  if (!isWord(rest[0], 'where')) {
-    return { rest }
-  }
-  const whereStr = remarkStr(rest[0], 'where')
+  const whereStr = takeWord(rest[0], 'where')
   rest = rest.slice(1)
   const partResult = parseWhereExpr(rest, tableName)
   rest = partResult.rest
   const expr = partResult.expr
   const where: AST.Where = { expr }
-  if (whereStr) {
+  if (whereStr !== 'where') {
     where.whereStr = whereStr
   }
   return { rest, where }
@@ -558,8 +564,13 @@ function isWord(token: Token.Any | undefined, word: string) {
   )
 }
 
-function takeWord(token: Token.Any | undefined) {
+function takeWord(token: Token.Any | undefined, word?: string) {
   if (token && token.type === 'word') {
+    if (word && token.value.toLowerCase() !== word) {
+      throw new Error(
+        `assert word to be "${word}", but got: ${JSON.stringify(token.value)}`,
+      )
+    }
     return token.value
   }
   throw new Error(`assert token to be word, but got: ${JSON.stringify(token)}`)
@@ -580,14 +591,10 @@ function remarkStr(word: Token.Any, expect: string): string | undefined {
 function parseGroupBy(
   tokens: Token.Any[],
   tableName: string,
-): { rest: Token.Any[]; groupBy?: AST.GroupBy } {
+): { rest: Token.Any[]; groupBy: AST.GroupBy } {
   let rest = skipNewline(tokens)
 
-  if (!(isWord(rest[0], 'group') && isWord(rest[1], 'by'))) {
-    return { rest }
-  }
-
-  const groupByStr = takeWord(rest[0]) + ' ' + takeWord(rest[1])
+  const groupByStr = takeWord(rest[0], 'group') + ' ' + takeWord(rest[1], 'by')
   rest = rest.slice(2)
   rest = skipNewline(rest)
 
@@ -629,12 +636,9 @@ function parseGroupBy(
 function parseOrderBy(
   tokens: Token.Any[],
   tableName: string,
-): { rest: Token.Any[]; orderBy?: AST.OrderBy } {
-  let rest = skipNewline(tokens)
-  if (!(isWord(rest[0], 'order') && isWord(rest[1], 'by'))) {
-    return { rest }
-  }
-  const orderByStr = takeWord(rest[0]) + ' ' + takeWord(rest[1])
+): { rest: Token.Any[]; orderBy: AST.OrderBy } {
+  let rest = tokens
+  const orderByStr = takeWord(rest[0], 'order') + ' ' + takeWord(rest[1], 'by')
   rest = rest.slice(2)
   rest = skipNewline(rest)
 
