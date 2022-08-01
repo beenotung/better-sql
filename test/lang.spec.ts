@@ -1305,6 +1305,160 @@ group by
       })
     })
 
+    context('order by statement', () => {
+      it('should parse single order by column', () => {
+        let query = `
+  select post [
+    id
+    title
+  ] order by created_at
+  `
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title' },
+            ],
+            orderBy: { fields: [{ name: 'created_at' }] },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+, post.title
+from post
+order by
+  post.created_at
+`)
+      })
+
+      it('should parse order by with explicit order', () => {
+        let query = `
+  select post [
+    id
+    title
+  ] order by created_at asc
+  `
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title' },
+            ],
+            orderBy: { fields: [{ name: 'created_at', order: 'asc' }] },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+, post.title
+from post
+order by
+  post.created_at asc
+`)
+      })
+
+      it('should parse order by with null order', () => {
+        let query = `
+  select post [
+    id
+    title
+  ] order by created_at asc nulls last
+  `
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title' },
+            ],
+            orderBy: {
+              fields: [{ name: 'created_at', order: 'asc nulls last' }],
+            },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+, post.title
+from post
+order by
+  post.created_at asc nulls last
+`)
+      })
+
+      it('should parse multi order by', () => {
+        let query = `
+  select post [
+    id
+    author {
+      nickname
+    } order by register_time desc nulls last
+    title
+  ] order by publish_time asc, type_id asc nulls first
+  `
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              {
+                type: 'table',
+                name: 'author',
+                single: true,
+                fields: [{ type: 'column', name: 'nickname' }],
+                orderBy: {
+                  fields: [{ name: 'register_time', order: 'desc nulls last' }],
+                },
+              },
+
+              { type: 'column', name: 'title' },
+            ],
+            orderBy: {
+              fields: [
+                { name: 'publish_time', order: 'asc' },
+                { name: 'type_id', order: 'asc nulls first' },
+              ],
+            },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+, author.nickname
+, post.title
+from post
+inner join author on author.id = post.author_id
+order by
+  author.register_time desc nulls last
+, post.publish_time asc
+, post.type_id asc nulls first
+`)
+      })
+    })
+
     it('should preserve original upper/lower case in the query', () => {
       let query = `
 SELECT DISTINCT POST [
@@ -1314,6 +1468,7 @@ SELECT DISTINCT POST [
 WHERE AUTHOR_ID = :AUTHOR_ID
   AND TYPE_ID = :Type_ID
    OR NOT DELETE_TIME IS NULL
+ORDER BY VERSION DESC NULLS FIRST
 `
       let ast = decode(query)
       expectAST(ast, {
@@ -1361,6 +1516,10 @@ WHERE AUTHOR_ID = :AUTHOR_ID
               },
             },
           },
+          orderBy: {
+            orderByStr: 'ORDER BY',
+            fields: [{ name: 'VERSION', order: 'DESC NULLS FIRST' }],
+          },
         },
       })
       let sql = generateSQL(ast)
@@ -1372,6 +1531,8 @@ FROM POST
 WHERE POST.AUTHOR_ID = :AUTHOR_ID
   AND POST.TYPE_ID = :Type_ID
    OR NOT POST.DELETE_TIME IS NULL
+ORDER BY
+  POST.VERSION DESC NULLS FIRST
 `)
     })
   })

@@ -23,7 +23,7 @@ export namespace Token {
   export type Any = Word | Symbol | Newline
 }
 
-const wordRegex = /^[a-zA-Z_0-9:@\$\?]+/
+const wordRegex = /^[a-zA-Z_0-9:@\$\?\.]+/
 const symbols = Object.fromEntries('{}[]()<>!=,'.split('').map(c => [c, true]))
 const keywords = ['<>', '!=', '<=', '>=']
 
@@ -113,6 +113,7 @@ export namespace AST {
     fields: Field[]
     where?: Where
     groupBy?: GroupBy
+    orderBy?: OrderBy
   }
   export type Field = Column | Table
   export type Column = {
@@ -143,6 +144,14 @@ export namespace AST {
   export type GroupBy = {
     groupByStr?: string
     fields: string[]
+  }
+  export type OrderBy = {
+    orderByStr?: string
+    fields: OrderByField[]
+  }
+  export type OrderByField = {
+    name: string
+    order?: string
   }
 }
 
@@ -205,18 +214,19 @@ function parseTable(tokens: Token.Any[]) {
 
   const fieldResult = parseFields(rest, tableName)
   rest = fieldResult.rest
-  const { single, fields, where, groupBy } = fieldResult
+  const { single, fields, where, groupBy, orderBy } = fieldResult
 
-  const table: AST.Table = { type: 'table', name: tableName, single, fields }
-  if (alias) {
-    table.alias = alias
+  const table: AST.Table = {
+    type: 'table',
+    name: tableName,
+    single,
+    fields,
+    alias,
+    where,
+    groupBy,
+    orderBy,
   }
-  if (where) {
-    table.where = where
-  }
-  if (groupBy) {
-    table.groupBy = groupBy
-  }
+  trimUndefined(table)
   return { table, rest }
 }
 
@@ -291,16 +301,12 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         name: field.name,
         single: fieldsResult.single,
         fields: fieldsResult.fields,
+        alias: field.alias,
+        where: fieldsResult.where,
+        groupBy: fieldsResult.groupBy,
+        orderBy: fieldsResult.orderBy,
       }
-      if (field.alias) {
-        table.alias = field.alias
-      }
-      if (fieldsResult.where) {
-        table.where = fieldsResult.where
-      }
-      if (fieldsResult.groupBy) {
-        table.groupBy = fieldsResult.groupBy
-      }
+      trimUndefined(table)
       fields.push(table)
       continue
     }
@@ -318,7 +324,11 @@ function parseFields(tokens: Token.Any[], tableName: string) {
   rest = groupByResult.rest
   const { groupBy } = groupByResult
 
-  return { single, fields, rest, where, groupBy }
+  const orderByResult = parseOrderBy(rest, tableName)
+  rest = orderByResult.rest
+  const { orderBy } = orderByResult
+
+  return { single, fields, rest, where, groupBy, orderBy }
 }
 
 function parseWord(tokens: Token.Any[], name: string) {
@@ -511,6 +521,13 @@ function isWord(token: Token.Any | undefined, word: string) {
   )
 }
 
+function takeWord(token: Token.Any | undefined) {
+  if (token && token.type === 'word') {
+    return token.value
+  }
+  throw new Error(`assert token to be word, but got: ${JSON.stringify(token)}`)
+}
+
 function isSymbol(token: Token.Any | undefined, symbol: string) {
   return (
     token && token.type === 'symbol' && token.value.toLowerCase() === symbol
@@ -533,8 +550,7 @@ function parseGroupBy(
     return { rest }
   }
 
-  const groupByStr: string | undefined =
-    (rest[0] as Token.Word).value + ' ' + (rest[1] as Token.Word).value
+  const groupByStr = takeWord(rest[0]) + ' ' + takeWord(rest[1])
   rest = rest.slice(2)
   rest = skipNewline(rest)
 
@@ -571,4 +587,72 @@ function parseGroupBy(
   }
 
   return { rest, groupBy: ast }
+}
+
+function parseOrderBy(
+  tokens: Token.Any[],
+  tableName: string,
+): { rest: Token.Any[]; orderBy?: AST.OrderBy } {
+  let rest = skipNewline(tokens)
+  if (!(isWord(rest[0], 'order') && isWord(rest[1], 'by'))) {
+    return { rest }
+  }
+  const orderByStr = takeWord(rest[0]) + ' ' + takeWord(rest[1])
+  rest = rest.slice(2)
+  rest = skipNewline(rest)
+
+  if (rest.length === 0) {
+    throw new Error(`empty "order by" statement after table "${tableName}"`)
+  }
+
+  const fields: AST.OrderByField[] = []
+
+  for (;;) {
+    const word = parseWord(
+      rest,
+      `field name of "order by" statement after table "${tableName}"`,
+    )
+    rest = word.rest
+    rest = skipNewline(rest)
+    let order = ''
+    if (isWord(rest[0], 'asc') || isWord(rest[0], 'desc')) {
+      order = takeWord(rest[0])
+      rest = rest.slice(1)
+      rest = skipNewline(rest)
+      if (isWord(rest[0], 'nulls')) {
+        if (isWord(rest[1], 'first') || isWord(rest[1], 'last')) {
+          order += ' ' + takeWord(rest[0]) + ' ' + takeWord(rest[1])
+          rest = rest.slice(2)
+          rest = skipNewline(rest)
+        }
+      }
+    }
+    const field: AST.OrderByField = { name: word.value }
+    if (order) {
+      field.order = order
+    }
+    fields.push(field)
+
+    if (isSymbol(rest[0], ',')) {
+      rest = rest.slice(1)
+      continue
+    }
+    break
+  }
+
+  const ast: AST.OrderBy = { fields }
+
+  if (orderByStr !== 'order by') {
+    ast.orderByStr = orderByStr
+  }
+
+  return { rest, orderBy: ast }
+}
+
+function trimUndefined<T extends object>(ast: T) {
+  for (const key in ast) {
+    if (ast[key] === undefined) {
+      delete ast[key]
+    }
+  }
 }

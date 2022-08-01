@@ -24,9 +24,12 @@ export function generateSQL(ast: AST.Select): string {
   let groupByStr: string | undefined
   const groupByFields: string[] = []
 
+  let orderByStr: string | undefined
+  const orderByFields: string[] = []
+
   function processTable(table: AST.Table) {
     const tableName = table.alias || table.name
-    const { where, groupBy } = table
+    const { where, groupBy, orderBy } = table
 
     table.fields.forEach(field => {
       if (field.type === 'column') {
@@ -50,6 +53,19 @@ ${join} ${subTable} on ${subTableName}.id = ${tableName}.${subTableName}_id`
           field = tableName + '.' + field
         }
         groupByFields.push(field)
+      })
+    }
+    if (orderBy) {
+      orderByStr = orderByStr || orderBy.orderByStr
+      orderBy.fields.forEach(({ name, order }) => {
+        let field = name
+        if (shouldAddTablePrefix(field)) {
+          field = tableName + '.' + field
+        }
+        if (order) {
+          field += ' ' + order
+        }
+        orderByFields.push(field)
       })
     }
   }
@@ -91,6 +107,14 @@ ${fromSQL}
     groupByStr = groupByStr || 'group by'
     sql += `${groupByStr}
   ${groupByFields.join(`
+, `)}
+`
+  }
+
+  if (orderByFields.length > 0) {
+    orderByStr = orderByStr || 'order by'
+    sql += `${orderByStr}
+  ${orderByFields.join(`
 , `)}
 `
   }
