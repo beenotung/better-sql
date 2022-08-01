@@ -1404,6 +1404,40 @@ order by
 `)
       })
 
+      it('should parse case-insensitive order by', () => {
+        let query = `
+  select post [
+    id
+    title
+  ] order by created_at collate nocase asc
+  `
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title' },
+            ],
+            orderBy: {
+              fields: [{ name: 'created_at', order: 'collate nocase asc' }],
+            },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+, post.title
+from post
+order by
+  post.created_at collate nocase asc
+`)
+      })
+
       it('should parse multi order by', () => {
         let query = `
   select post [
@@ -1469,7 +1503,7 @@ WHERE AUTHOR_ID = :AUTHOR_ID
   AND TYPE_ID = :Type_ID
    OR NOT DELETE_TIME IS NULL
 GROUP BY VERSION
-ORDER BY VERSION DESC NULLS FIRST
+ORDER BY VERSION COLLATE NOCASE DESC NULLS FIRST
 `
       let ast = decode(query)
       expectAST(ast, {
@@ -1520,7 +1554,9 @@ ORDER BY VERSION DESC NULLS FIRST
           groupBy: { groupByStr: 'GROUP BY', fields: ['VERSION'] },
           orderBy: {
             orderByStr: 'ORDER BY',
-            fields: [{ name: 'VERSION', order: 'DESC NULLS FIRST' }],
+            fields: [
+              { name: 'VERSION', order: 'COLLATE NOCASE DESC NULLS FIRST' },
+            ],
           },
         },
       })
@@ -1536,7 +1572,7 @@ WHERE POST.AUTHOR_ID = :AUTHOR_ID
 GROUP BY
   POST.VERSION
 ORDER BY
-  POST.VERSION DESC NULLS FIRST
+  POST.VERSION COLLATE NOCASE DESC NULLS FIRST
 `)
     })
   })

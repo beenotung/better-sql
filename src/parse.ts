@@ -614,22 +614,30 @@ function parseOrderBy(
     )
     rest = word.rest
     rest = skipNewline(rest)
-    let order = ''
+    const orders: string[] = []
+    if (isWord(rest[0], 'collate')) {
+      orders.push(takeWord(rest[0]))
+      orders.push(takeWord(rest[1]))
+      rest = rest.slice(2)
+      rest = skipNewline(rest)
+    }
     if (isWord(rest[0], 'asc') || isWord(rest[0], 'desc')) {
-      order = takeWord(rest[0])
+      orders.push(takeWord(rest[0]))
       rest = rest.slice(1)
       rest = skipNewline(rest)
-      if (isWord(rest[0], 'nulls')) {
-        if (isWord(rest[1], 'first') || isWord(rest[1], 'last')) {
-          order += ' ' + takeWord(rest[0]) + ' ' + takeWord(rest[1])
-          rest = rest.slice(2)
-          rest = skipNewline(rest)
-        }
+      if (
+        isWord(rest[0], 'nulls') &&
+        (isWord(rest[1], 'first') || isWord(rest[1], 'last'))
+      ) {
+        orders.push(takeWord(rest[0]))
+        orders.push(takeWord(rest[1]))
+        rest = rest.slice(2)
+        rest = skipNewline(rest)
       }
     }
     const field: AST.OrderByField = { name: word.value }
-    if (order) {
-      field.order = order
+    if (orders.length > 0) {
+      field.order = orders.join(' ')
     }
     fields.push(field)
 
