@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { AST, decode } from '../src/parse'
-import { generateSQL } from '../src/code-gen'
+import { generateSQL, nameWithTablePrefix } from '../src/code-gen'
 
 function expectAST<T extends AST.Expression>(actual: T, expected: T) {
   expect(actual).to.deep.equals(expected)
@@ -1703,6 +1703,18 @@ ORDER BY
 LIMIT 10
 OFFSET 20
 `)
+    })
+  })
+
+  context('code-gen helpers', () => {
+    it('should insert table prefix on column name', () => {
+      let name = nameWithTablePrefix({ field: 'score', tableName: 'exam' })
+      expect(name).to.equals('exam.score')
+    })
+
+    it('should insert table prefix in aggregate function', () => {
+      let name = nameWithTablePrefix({ field: 'sum(score)', tableName: 'exam' })
+      expect(name).to.equals('sum(exam.score)')
     })
   })
 })

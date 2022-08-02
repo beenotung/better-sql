@@ -174,10 +174,18 @@ function nameWithAlias(named: Named, toCase: (word: string) => string): string {
   return sql
 }
 
-function nameWithTablePrefix(input: { field: string; tableName: string }) {
+export function nameWithTablePrefix(input: {
+  field: string
+  tableName: string
+}) {
   let field = input.field
   if (shouldAddTablePrefix(field)) {
-    field = input.tableName + '.' + field
+    const match = field.match(/.*\((.*)\).*/)
+    if (match) {
+      field = field.replace(match[1], input.tableName + '.' + match[1])
+    } else {
+      field = input.tableName + '.' + field
+    }
   }
   return field
 }
