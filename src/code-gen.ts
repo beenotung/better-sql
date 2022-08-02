@@ -31,7 +31,7 @@ export function generateSQL(ast: AST.Select): string {
   }
 
   const fromStr: string = toCase('from')
-  let fromSQL = fromStr + ' ' + nameToSQL(table, toCase)
+  let fromSQL = fromStr + ' ' + nameWithAlias(table, toCase)
   const whereConditions: WhereCondition[] = []
 
   let groupByStr: string | undefined
@@ -55,9 +55,14 @@ export function generateSQL(ast: AST.Select): string {
 
     table.fields.forEach(field => {
       if (field.type === 'column') {
-        selectFields.push(tableName + '.' + nameToSQL(field, toCase))
+        selectFields.push(
+          nameWithTablePrefix({
+            field: nameWithAlias(field, toCase),
+            tableName,
+          }),
+        )
       } else if (field.type === 'table') {
-        const subTable = nameToSQL(field, toCase)
+        const subTable = nameWithAlias(field, toCase)
         const subTableName = field.alias || field.name
         const join = field.single ? toCase('inner join') : toCase('left join')
         fromSQL += `
@@ -71,19 +76,13 @@ ${join} ${subTable} ${on} ${subTableName}.${id} = ${tableName}.${subTableName}_$
     if (groupBy) {
       groupByStr = groupByStr || groupBy.groupByStr
       groupBy.fields.forEach(field => {
-        if (shouldAddTablePrefix(field)) {
-          field = tableName + '.' + field
-        }
-        groupByFields.push(field)
+        groupByFields.push(nameWithTablePrefix({ field, tableName }))
       })
     }
     if (orderBy) {
       orderByStr = orderByStr || orderBy.orderByStr
       orderBy.fields.forEach(({ name, order }) => {
-        let field = name
-        if (shouldAddTablePrefix(field)) {
-          field = tableName + '.' + field
-        }
+        let field = nameWithTablePrefix({ field: name, tableName })
         if (order) {
           field += ' ' + order
         }
@@ -160,20 +159,27 @@ ${fromSQL}
   return sql
 }
 
-function nameToSQL(
-  named: {
-    name: string
-    alias?: string
-    asStr?: string
-  },
-  toCase: (word: string) => string,
-): string {
+type Named = {
+  name: string
+  alias?: string
+  asStr?: string
+}
+
+function nameWithAlias(named: Named, toCase: (word: string) => string): string {
   const asStr = named.asStr || toCase('as')
   let sql = named.name
   if (named.alias) {
     sql += ' ' + asStr + ' ' + named.alias
   }
   return sql
+}
+
+function nameWithTablePrefix(input: { field: string; tableName: string }) {
+  let field = input.field
+  if (shouldAddTablePrefix(field)) {
+    field = input.tableName + '.' + field
+  }
+  return field
 }
 
 function shouldAddTablePrefix(field: string): boolean {
@@ -190,7 +196,7 @@ function shouldAddTablePrefix(field: string): boolean {
       return false
   }
   if (field.toLowerCase() === 'null') return false
-  return !(+field || field.includes('.'))
+  return !(+field || field.includes('.') || field.includes('*'))
 }
 
 function whereToSQL(
@@ -199,10 +205,7 @@ function whereToSQL(
   toCase: (word: string) => string,
 ): string {
   if (typeof expr === 'string') {
-    if (shouldAddTablePrefix(expr)) {
-      expr = tableName + '.' + expr
-    }
-    return expr
+    return nameWithTablePrefix({ field: expr, tableName })
   }
   switch (expr.type) {
     case 'not': {

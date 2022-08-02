@@ -23,9 +23,13 @@ export namespace Token {
   export type Any = Word | Symbol | Newline
 }
 
-const wordRegex = /^[a-zA-Z_0-9:@\$\?\.]+/
+const wordRegexStr = 'a-zA-Z_0-9:@$?.*'
+const wordWithBracketRegexStr = `[${wordRegexStr}]+[${wordRegexStr}\(]+[${wordRegexStr}\)]+`
+const wordRegex = new RegExp(`^${wordWithBracketRegexStr}|^[${wordRegexStr}]+`)
 const symbols = Object.fromEntries('{}[]()<>!=,'.split('').map(c => [c, true]))
 const keywords = ['<>', '!=', '<=', '>=']
+
+// const aggregateFunctions = ['count', 'sum', 'avg', 'min', 'max', 'total']
 
 export function tokenize(text: string): Token.Any[] {
   const tokens: Token.Any[] = []

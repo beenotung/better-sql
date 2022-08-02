@@ -1303,6 +1303,41 @@ group by
 , post.version
 `)
       })
+
+      it('should parse aggregate function', () => {
+        let query = `
+select post [
+  author_id
+  created_at
+  count(*) as post_count
+] group by author_id
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'author_id' },
+              { type: 'column', name: 'created_at' },
+              { type: 'column', name: 'count(*)', alias: 'post_count' },
+            ],
+            groupBy: { fields: ['author_id'] },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.author_id
+, post.created_at
+, count(*) as post_count
+from post
+group by
+  post.author_id
+`)
+      })
     })
 
     context('order by statement', () => {
