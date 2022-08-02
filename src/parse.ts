@@ -118,6 +118,7 @@ export namespace AST {
     fields: Field[]
     where?: Where
     groupBy?: GroupBy
+    having?: Having
     orderBy?: OrderBy
     limit?: string
     offset?: string
@@ -131,6 +132,10 @@ export namespace AST {
   }
   export type Where = {
     whereStr?: string
+    expr: WhereExpr
+  }
+  export type Having = {
+    havingStr?: string
     expr: WhereExpr
   }
   export type WhereExpr =
@@ -232,6 +237,7 @@ function parseTable(tokens: Token.Any[]) {
     alias,
     asStr,
     where: fieldsResult.where,
+    having: fieldsResult.having,
     groupBy: fieldsResult.groupBy,
     orderBy: fieldsResult.orderBy,
     limit: fieldsResult.limit,
@@ -318,6 +324,7 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         alias: field.alias,
         asStr: field.asStr,
         where: fieldsResult.where,
+        having: fieldsResult.having,
         groupBy: fieldsResult.groupBy,
         orderBy: fieldsResult.orderBy,
         limit: fieldsResult.limit,
@@ -334,6 +341,7 @@ function parseFields(tokens: Token.Any[], tableName: string) {
   }
 
   let where: AST.Where | undefined
+  let having: AST.Having | undefined
   let groupBy: AST.GroupBy | undefined
   let orderBy: AST.OrderBy | undefined
   let limit: string | undefined
@@ -345,6 +353,12 @@ function parseFields(tokens: Token.Any[], tableName: string) {
       const whereResult = parseWhere(rest, tableName)
       rest = whereResult.rest
       where = whereResult.where
+      continue
+    }
+    if (isWord(rest[0], 'having')) {
+      const havingResult = parseHaving(rest, tableName)
+      rest = havingResult.rest
+      having = havingResult.having
       continue
     }
     if (isWord(rest[0], 'group') && isWord(rest[1], 'by')) {
@@ -378,7 +392,17 @@ function parseFields(tokens: Token.Any[], tableName: string) {
     break
   }
 
-  return { single, fields, rest, where, groupBy, orderBy, limit, offset }
+  return {
+    single,
+    fields,
+    rest,
+    where,
+    having,
+    groupBy,
+    orderBy,
+    limit,
+    offset,
+  }
 }
 
 function parseWord(tokens: Token.Any[], name: string) {
@@ -463,7 +487,7 @@ function parseWhere(
   tokens: Token.Any[],
   tableName: string,
 ): { rest: Token.Any[]; where: AST.Where } {
-  let rest = skipNewline(tokens)
+  let rest = tokens
   const whereStr = takeWord(rest[0], 'where')
   rest = rest.slice(1)
   const partResult = parseWhereExpr(rest, tableName)
@@ -474,6 +498,23 @@ function parseWhere(
     where.whereStr = whereStr
   }
   return { rest, where }
+}
+
+function parseHaving(
+  tokens: Token.Any[],
+  tableName: string,
+): { rest: Token.Any[]; having: AST.Where } {
+  let rest = tokens
+  const havingStr = takeWord(rest[0], 'having')
+  rest = rest.slice(1)
+  const partResult = parseWhereExpr(rest, tableName)
+  rest = partResult.rest
+  const expr = partResult.expr
+  const having: AST.Having = { expr }
+  if (havingStr !== 'having') {
+    having.havingStr = havingStr
+  }
+  return { rest, having }
 }
 
 function parseWhereExpr(

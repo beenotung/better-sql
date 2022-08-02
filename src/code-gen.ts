@@ -1,8 +1,8 @@
 import { AST } from './parse'
 
-type WhereCondition = {
+type Condition = {
   tableName: string
-  where: AST.Where
+  expr: AST.WhereExpr
 }
 
 export function generateSQL(ast: AST.Select): string {
@@ -32,7 +32,12 @@ export function generateSQL(ast: AST.Select): string {
 
   const fromStr: string = toCase('from')
   let fromSQL = fromStr + ' ' + nameWithAlias(table, toCase)
-  const whereConditions: WhereCondition[] = []
+
+  let whereStr: string | undefined
+  let havingStr: string | undefined
+
+  const whereConditions: Condition[] = []
+  const havingConditions: Condition[] = []
 
   let groupByStr: string | undefined
   const groupByFields: string[] = []
@@ -48,7 +53,7 @@ export function generateSQL(ast: AST.Select): string {
 
   function processTable(table: AST.Table) {
     const tableName = table.alias || table.name
-    const { where, groupBy, orderBy } = table
+    const { where, groupBy, having, orderBy } = table
 
     limit = limit || table.limit
     offset = offset || table.offset
@@ -71,7 +76,12 @@ ${join} ${subTable} ${on} ${subTableName}.${id} = ${tableName}.${subTableName}_$
       }
     })
     if (where) {
-      whereConditions.push({ tableName, where })
+      whereStr = whereStr || where.whereStr
+      whereConditions.push({ tableName, expr: where.expr })
+    }
+    if (having) {
+      havingStr = havingStr || having.havingStr
+      havingConditions.push({ tableName, expr: having.expr })
     }
     if (groupBy) {
       groupByStr = groupByStr || groupBy.groupByStr
@@ -100,25 +110,19 @@ ${selectStr}
 ${selectSQL}
 ${fromSQL}
 `
-  if (whereConditions.length > 0) {
-    const whereStr: string =
-      pickWhereStrFromConditions(whereConditions) || toCase('where')
-    sql += whereStr + ' '
-    if (whereConditions.length === 1) {
-      sql += whereToSQL(
-        whereConditions[0].tableName,
-        whereConditions[0].where.expr,
-        toCase,
-      )
+
+  function addConditions(conditions: Condition[], conditionStr: string) {
+    if (conditions.length === 0) {
+      return
+    }
+    sql += conditionStr + ' '
+    if (conditions.length === 1) {
+      sql += whereToSQL(conditions[0].tableName, conditions[0].expr, toCase)
     } else {
-      sql += whereConditions
+      sql += conditions
         .map(condition => {
-          let sql = whereToSQL(
-            condition.tableName,
-            condition.where.expr,
-            toCase,
-          )
-          if (hasOr(condition.where.expr)) {
+          let sql = whereToSQL(condition.tableName, condition.expr, toCase)
+          if (hasOr(condition.expr)) {
             sql = `(${sql})`
           }
           return sql
@@ -129,6 +133,12 @@ ${fromSQL}
 `
   }
 
+  addConditions(whereConditions, whereStr || toCase('where'))
+
+  if (havingConditions.length > 0 && groupByFields.length === 0) {
+    console.warn('using "having" without "group by"')
+  }
+
   if (groupByFields.length > 0) {
     groupByStr = groupByStr || toCase('group by')
     sql += `${groupByStr}
@@ -136,6 +146,8 @@ ${fromSQL}
 , `)}
 `
   }
+
+  addConditions(havingConditions, havingStr || toCase('having'))
 
   if (orderByFields.length > 0) {
     orderByStr = orderByStr || toCase('order by')
@@ -255,14 +267,5 @@ function hasOr(where: AST.WhereExpr): boolean {
           (typeof where.right !== 'string' && hasOr(where.right))
         )
     }
-  }
-}
-
-function pickWhereStrFromConditions(
-  whereConditions: WhereCondition[],
-): string | undefined {
-  for (const condition of whereConditions) {
-    const where = condition.where
-    if (where.whereStr) return where.whereStr
   }
 }
