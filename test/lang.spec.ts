@@ -1809,6 +1809,76 @@ where post.author_id not in (
 )
 `)
       })
+
+      it('should parse multi-level nested select with "in" expression', () => {
+        let query = `
+select post [
+  title
+] where author_id not in (
+  select user [ id ]
+  where type_id in (
+    select user_type [ id ]
+  )
+)
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            single: false,
+            name: 'post',
+            fields: [{ type: 'column', name: 'title' }],
+            where: {
+              expr: {
+                type: 'in',
+                expr: 'author_id',
+                not: 'not',
+                select: {
+                  type: 'select',
+                  table: {
+                    type: 'table',
+                    name: 'user',
+                    single: false,
+                    fields: [{ type: 'column', name: 'id' }],
+                    where: {
+                      expr: {
+                        type: 'in',
+                        expr: 'type_id',
+                        select: {
+                          type: 'select',
+                          table: {
+                            type: 'table',
+                            name: 'user_type',
+                            single: false,
+                            fields: [{ type: 'column', name: 'id' }],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.title
+from post
+where post.author_id not in (
+  select
+    user.id
+  from user
+  where user.type_id in (
+    select
+      user_type.id
+    from user_type
+  )
+)
+`)
+      })
     })
 
     it('should parse "where", "group by", "order by", "limit", "offset" in any order', () => {

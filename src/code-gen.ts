@@ -5,13 +5,7 @@ type Condition = {
   expr: AST.WhereExpr
 }
 
-type GenerateSQLOptions = {
-  indentLevel: number
-}
-export function generateSQL(
-  ast: AST.Select,
-  options: GenerateSQLOptions = { indentLevel: 0 },
-): string {
+export function generateSQL(ast: AST.Select): string {
   const table = ast.table
   const selectFields: string[] = []
 
@@ -35,7 +29,7 @@ export function generateSQL(
       })
       .join(' ')
   }
-  const context = { toCase, indentLevel: options.indentLevel }
+  const context = { toCase }
 
   const fromStr: string = toCase('from')
   let fromSQL = fromStr + ' ' + nameWithAlias(table, toCase)
@@ -233,13 +227,12 @@ function whereToSQL(
   expr: AST.WhereExpr | string,
   context: {
     toCase: (word: string) => string
-    indentLevel: number
   },
 ): string {
   if (typeof expr === 'string') {
     return nameWithTablePrefix({ field: expr, tableName })
   }
-  const { toCase, indentLevel } = context
+  const { toCase } = context
   switch (expr.type) {
     case 'not': {
       const notStr = expr.notStr || toCase('not')
@@ -288,17 +281,13 @@ function whereToSQL(
         sql += ' ' + expr.not
       }
       sql += ' ' + inStr + ' ('
-      const subQuery = generateSQL(expr.select, {
-        indentLevel: indentLevel + 1,
-      })
+      const subQuery = generateSQL(expr.select)
       sql +=
         subQuery
           .split('\n')
           .map(
             (line, i, lines) =>
-              (i === 0 || i === lines.length - 1
-                ? ''
-                : '  '.repeat(indentLevel + 1)) + line,
+              (i === 0 || i === lines.length - 1 ? '' : '  ') + line,
           )
           .join('\n') + ')'
       return sql
