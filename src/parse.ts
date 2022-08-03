@@ -659,12 +659,25 @@ function parseWhereExpr(
       }
       trimUndefined(expr)
     } else {
-      const opResult = parseSymbol(
-        rest,
-        `operator of where statement after table "${tableName}"`,
-      )
-      rest = opResult.rest
-      const op = opResult.value
+      let op: string
+      if (rest[0]?.type === 'symbol') {
+        const opResult = parseSymbol(
+          rest,
+          `operator of where statement after table "${tableName}"`,
+        )
+        rest = opResult.rest
+        op = opResult.value
+      } else {
+        const opResult = parseWord(
+          rest,
+          `"like" or user-defined function of where statement after table "${tableName}"`,
+        )
+        rest = opResult.rest
+        op = opResult.value
+      }
+      if (not) {
+        op = 'not ' + op
+      }
 
       const rightResult = parseWord(
         rest,

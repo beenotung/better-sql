@@ -1175,6 +1175,82 @@ where (post.delete_time is null
 `)
         })
       })
+
+      context('"like" and user-defined functions', () => {
+        function test(func: string) {
+          it(`should parse "${func}"`, () => {
+            let query = `
+select post [
+  title
+]
+where title ${func} :search
+`
+            let ast = decode(query)
+            expectAST(ast, {
+              type: 'select',
+              table: {
+                type: 'table',
+                name: 'post',
+                single: false,
+                fields: [{ type: 'column', name: 'title' }],
+                where: {
+                  expr: {
+                    type: 'compare',
+                    left: 'title',
+                    op: func,
+                    right: ':search',
+                  },
+                },
+              },
+            })
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(/* sql */ `
+select
+  post.title
+from post
+where post.title ${func} :search
+`)
+          })
+
+          it(`should parse "not ${func}"`, () => {
+            let query = `
+select post [
+  title
+]
+where title not ${func} :search
+`
+            let ast = decode(query)
+            expectAST(ast, {
+              type: 'select',
+              table: {
+                type: 'table',
+                name: 'post',
+                single: false,
+                fields: [{ type: 'column', name: 'title' }],
+                where: {
+                  expr: {
+                    type: 'compare',
+                    left: 'title',
+                    op: `not ${func}`,
+                    right: ':search',
+                  },
+                },
+              },
+            })
+            let sql = generateSQL(ast)
+            expect(sql).to.equals(/* sql */ `
+select
+  post.title
+from post
+where post.title not ${func} :search
+`)
+          })
+        }
+        test('like')
+        test('glob')
+        test('regexp')
+        test('match')
+      })
     })
 
     it('should parse distinct select', () => {
