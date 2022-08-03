@@ -1729,8 +1729,8 @@ SELECT DISTINCT THREAD AS POST [
   VER AS VERSION
   TITLE
 ]
-WHERE AUTHOR_ID = :AUTHOR_ID
-  AND TYPE_ID = :Type_ID
+WHERE AUTHOR_ID = :Author_ID
+  AND PUBLISH_TIME NOT BETWEEN '2022-01-01' AND '2022-12-31'
    OR NOT DELETE_TIME IS NULL
 GROUP BY VERSION
 ORDER BY VERSION COLLATE NOCASE DESC NULLS FIRST
@@ -1760,16 +1760,19 @@ OFFSET 20
                 type: 'compare',
                 left: 'AUTHOR_ID',
                 op: '=',
-                right: ':AUTHOR_ID',
+                right: ':Author_ID',
               },
               op: 'AND',
               right: {
                 type: 'compare',
                 left: {
-                  type: 'compare',
-                  left: 'TYPE_ID',
-                  op: '=',
-                  right: ':Type_ID',
+                  type: 'between',
+                  betweenStr: 'BETWEEN',
+                  not: 'NOT',
+                  andStr: 'AND',
+                  expr: 'PUBLISH_TIME',
+                  left: "'2022-01-01'",
+                  right: "'2022-12-31'",
                 },
                 op: 'OR',
                 right: {
@@ -1802,8 +1805,8 @@ SELECT DISTINCT
   POST.VER AS VERSION
 , POST.TITLE
 FROM THREAD AS POST
-WHERE POST.AUTHOR_ID = :AUTHOR_ID
-  AND POST.TYPE_ID = :Type_ID
+WHERE POST.AUTHOR_ID = :Author_ID
+  AND POST.PUBLISH_TIME NOT BETWEEN '2022-01-01' AND '2022-12-31'
    OR NOT POST.DELETE_TIME IS NULL
 GROUP BY
   POST.VERSION
