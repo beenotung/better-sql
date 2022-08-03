@@ -573,7 +573,7 @@ function parseWhereExpr(
     rest = skipNewline(rest)
     let not: string | undefined
     if (isWord(rest[0], 'not')) {
-      not = remarkStr(rest[0], 'not')
+      not = takeWord(rest[0])
       rest = rest.slice(1)
       rest = skipNewline(rest)
     }

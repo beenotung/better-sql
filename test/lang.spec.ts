@@ -578,6 +578,40 @@ from post
 where post.publish_time between '2022-01-01' and '2022-12-31'
 `)
         })
+
+        it('should parse "not between" where condition', () => {
+          let query = `
+select post [
+  title
+] where publish_time not between '2022-01-01' and '2022-12-31'
+`
+          let ast = decode(query)
+          expectAST(ast, {
+            type: 'select',
+            table: {
+              type: 'table',
+              name: 'post',
+              single: false,
+              fields: [{ type: 'column', name: 'title' }],
+              where: {
+                expr: {
+                  type: 'between',
+                  not: 'not',
+                  expr: 'publish_time',
+                  left: "'2022-01-01'",
+                  right: "'2022-12-31'",
+                },
+              },
+            },
+          })
+          let sql = generateSQL(ast)
+          expect(sql).to.equals(/* sql */ `
+select
+  post.title
+from post
+where post.publish_time not between '2022-01-01' and '2022-12-31'
+`)
+        })
       })
 
       context('where condition with variables', () => {
