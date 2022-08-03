@@ -23,7 +23,7 @@ export namespace Token {
   export type Any = Word | Symbol | Newline
 }
 
-const wordRegexStr = 'a-zA-Z_0-9:@$?.*'
+const wordRegexStr = 'a-zA-Z_0-9:@$?.*\'"-'
 const wordWithBracketRegexStr = `[${wordRegexStr}]+[${wordRegexStr}\(]+[${wordRegexStr}\)]+`
 const wordRegex = new RegExp(`^${wordWithBracketRegexStr}|^[${wordRegexStr}]+`)
 const symbols = Object.fromEntries('{}[]()<>!=,'.split('').map(c => [c, true]))
@@ -153,6 +153,15 @@ export namespace AST {
     | {
         type: 'parenthesis'
         expr: WhereExpr
+      }
+    | {
+        type: 'between'
+        betweenStr?: string
+        expr: WhereExpr | string
+        not?: string
+        andStr?: string
+        left: string
+        right: string
       }
   export type GroupBy = {
     groupByStr?: string
@@ -559,23 +568,65 @@ function parseWhereExpr(
       `left-hand side of where statement after table "${tableName}"`,
     )
     rest = leftResult.rest
-    const left = leftResult.value
+    const field = leftResult.value
 
-    const opResult = parseSymbol(
-      rest,
-      `operator of where statement after table "${tableName}"`,
-    )
-    rest = opResult.rest
-    const op = opResult.value
+    rest = skipNewline(rest)
+    let not: string | undefined
+    if (isWord(rest[0], 'not')) {
+      not = remarkStr(rest[0], 'not')
+      rest = rest.slice(1)
+      rest = skipNewline(rest)
+    }
 
-    const rightResult = parseWord(
-      rest,
-      `right-hand side of where statement after table "${tableName}"`,
-    )
-    rest = rightResult.rest
-    const right = rightResult.value
+    if (isWord(rest[0], 'between')) {
+      const betweenStr = remarkStr(rest[0], 'between')
+      rest = rest.slice(1)
 
-    expr = { type: 'compare', left, op, right }
+      const leftResult = parseWord(
+        rest,
+        `left value of "between" statement after table "${tableName}"`,
+      )
+      rest = leftResult.rest
+      const left = leftResult.value
+
+      rest = skipNewline(rest)
+      const andStr = remarkStr(rest[0], 'and')
+      rest = rest.slice(1)
+
+      const rightResult = parseWord(
+        rest,
+        `right value of "between" statement after table "${tableName}"`,
+      )
+      rest = rightResult.rest
+      const right = rightResult.value
+
+      expr = {
+        type: 'between',
+        betweenStr,
+        expr: field,
+        not,
+        andStr,
+        left,
+        right,
+      }
+      trimUndefined(expr)
+    } else {
+      const opResult = parseSymbol(
+        rest,
+        `operator of where statement after table "${tableName}"`,
+      )
+      rest = opResult.rest
+      const op = opResult.value
+
+      const rightResult = parseWord(
+        rest,
+        `right-hand side of where statement after table "${tableName}"`,
+      )
+      rest = rightResult.rest
+      const right = rightResult.value
+
+      expr = { type: 'compare', left: field, op, right }
+    }
   }
 
   rest = skipNewline(rest)

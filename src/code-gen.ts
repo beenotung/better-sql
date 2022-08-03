@@ -208,6 +208,8 @@ function shouldAddTablePrefix(field: string): boolean {
     case '$':
     case '@':
     case '?':
+    case "'":
+    case '"':
       return false
   }
   switch (field) {
@@ -248,6 +250,24 @@ function whereToSQL(
           sql += ' ' + expr.op
       }
       sql += ' ' + whereToSQL(tableName, expr.right, toCase)
+      return sql
+    }
+    case 'between': {
+      const betweenStr = expr.betweenStr || toCase('between')
+      const andStr = expr.andStr || toCase('and')
+      let sql: string = whereToSQL(tableName, expr.expr, toCase)
+      if (expr.not) {
+        sql += ' ' + expr.not
+      }
+      sql +=
+        ' ' +
+        betweenStr +
+        ' ' +
+        whereToSQL(tableName, expr.left, toCase) +
+        ' ' +
+        andStr +
+        ' ' +
+        whereToSQL(tableName, expr.right, toCase)
       return sql
     }
   }
