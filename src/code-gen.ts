@@ -5,7 +5,13 @@ type Condition = {
   expr: AST.WhereExpr
 }
 
-export function generateSQL(ast: AST.Select): string {
+type GenerateSQLOptions = {
+  indentLevel: number
+}
+export function generateSQL(
+  ast: AST.Select,
+  options: GenerateSQLOptions = { indentLevel: 0 },
+): string {
   const table = ast.table
   const selectFields: string[] = []
 
@@ -29,6 +35,7 @@ export function generateSQL(ast: AST.Select): string {
       })
       .join(' ')
   }
+  const context = { toCase, indentLevel: options.indentLevel }
 
   const fromStr: string = toCase('from')
   let fromSQL = fromStr + ' ' + nameWithAlias(table, toCase)
@@ -117,11 +124,11 @@ ${fromSQL}
     }
     sql += conditionStr + ' '
     if (conditions.length === 1) {
-      sql += whereToSQL(conditions[0].tableName, conditions[0].expr, toCase)
+      sql += whereToSQL(conditions[0].tableName, conditions[0].expr, context)
     } else {
       sql += conditions
         .map(condition => {
-          let sql = whereToSQL(condition.tableName, condition.expr, toCase)
+          let sql = whereToSQL(condition.tableName, condition.expr, context)
           if (hasOr(condition.expr)) {
             sql = `(${sql})`
           }
@@ -224,21 +231,25 @@ function shouldAddTablePrefix(field: string): boolean {
 function whereToSQL(
   tableName: string,
   expr: AST.WhereExpr | string,
-  toCase: (word: string) => string,
+  context: {
+    toCase: (word: string) => string
+    indentLevel: number
+  },
 ): string {
   if (typeof expr === 'string') {
     return nameWithTablePrefix({ field: expr, tableName })
   }
+  const { toCase, indentLevel } = context
   switch (expr.type) {
     case 'not': {
       const notStr = expr.notStr || toCase('not')
-      return notStr + ' ' + whereToSQL(tableName, expr.expr, toCase)
+      return notStr + ' ' + whereToSQL(tableName, expr.expr, context)
     }
     case 'parenthesis': {
-      return '(' + whereToSQL(tableName, expr.expr, toCase) + ')'
+      return '(' + whereToSQL(tableName, expr.expr, context) + ')'
     }
     case 'compare': {
-      let sql = whereToSQL(tableName, expr.left, toCase)
+      let sql = whereToSQL(tableName, expr.left, context)
       switch (expr.op.toLowerCase()) {
         case 'and':
           sql += '\n  ' + expr.op
@@ -249,13 +260,13 @@ function whereToSQL(
         default:
           sql += ' ' + expr.op
       }
-      sql += ' ' + whereToSQL(tableName, expr.right, toCase)
+      sql += ' ' + whereToSQL(tableName, expr.right, context)
       return sql
     }
     case 'between': {
       const betweenStr = expr.betweenStr || toCase('between')
       const andStr = expr.andStr || toCase('and')
-      let sql: string = whereToSQL(tableName, expr.expr, toCase)
+      let sql: string = whereToSQL(tableName, expr.expr, context)
       if (expr.not) {
         sql += ' ' + expr.not
       }
@@ -263,11 +274,33 @@ function whereToSQL(
         ' ' +
         betweenStr +
         ' ' +
-        whereToSQL(tableName, expr.left, toCase) +
+        whereToSQL(tableName, expr.left, context) +
         ' ' +
         andStr +
         ' ' +
-        whereToSQL(tableName, expr.right, toCase)
+        whereToSQL(tableName, expr.right, context)
+      return sql
+    }
+    case 'in': {
+      const inStr = expr.inStr || toCase('in')
+      let sql: string = whereToSQL(tableName, expr.expr, context)
+      if (expr.not) {
+        sql += ' ' + expr.not
+      }
+      sql += ' ' + inStr + ' ('
+      const subQuery = generateSQL(expr.select, {
+        indentLevel: indentLevel + 1,
+      })
+      sql +=
+        subQuery
+          .split('\n')
+          .map(
+            (line, i, lines) =>
+              (i === 0 || i === lines.length - 1
+                ? ''
+                : '  '.repeat(indentLevel + 1)) + line,
+          )
+          .join('\n') + ')'
       return sql
     }
   }

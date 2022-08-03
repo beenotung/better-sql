@@ -163,6 +163,13 @@ export namespace AST {
         left: string
         right: string
       }
+    | {
+        type: 'in'
+        inStr?: string
+        not?: string
+        expr: WhereExpr | string
+        select: Select
+      }
   export type GroupBy = {
     groupByStr?: string
     fields: string[]
@@ -177,41 +184,49 @@ export namespace AST {
   }
 }
 
-export function parse(tokens: Token.Any[]) {
-  let rest = skipNewline(tokens)
+export function parse(tokens: Token.Any[]): {
+  rest: Token.Any[]
+  ast: AST.Expression
+} {
+  const rest = skipNewline(tokens)
   if (rest.length === 0) {
     throw new Error('empty tokens')
   }
   if (isWord(rest[0], 'select')) {
-    const selectStr = remarkStr(rest[0], 'select')
-    rest = rest.slice(1)
-    rest = skipNewline(rest)
-
-    let distinct: string | undefined
-    if (isWord(rest[0], 'distinct')) {
-      distinct = (rest[0] as Token.Word).value
-      rest = rest.slice(1)
-      rest = skipNewline(rest)
-    }
-
-    const tableResult = parseTable(rest)
-    rest = tableResult.rest
-    rest = skipNewline(rest)
-
-    const { table } = tableResult
-    const ast: AST.Select = {
-      type: 'select',
-      table,
-    }
-    if (selectStr) {
-      ast.selectStr = selectStr
-    }
-    if (distinct) {
-      ast.distinct = distinct
-    }
-    return { ast, rest }
+    return parseSelect(rest)
   }
   throw new Error('missing "select" token')
+}
+
+function parseSelect(tokens: Token.Any[]) {
+  let rest = tokens
+  const selectStr = remarkStr(rest[0], 'select')
+  rest = rest.slice(1)
+  rest = skipNewline(rest)
+
+  let distinct: string | undefined
+  if (isWord(rest[0], 'distinct')) {
+    distinct = (rest[0] as Token.Word).value
+    rest = rest.slice(1)
+    rest = skipNewline(rest)
+  }
+
+  const tableResult = parseTable(rest)
+  rest = tableResult.rest
+  rest = skipNewline(rest)
+
+  const { table } = tableResult
+  const ast: AST.Select = {
+    type: 'select',
+    table,
+  }
+  if (selectStr) {
+    ast.selectStr = selectStr
+  }
+  if (distinct) {
+    ast.distinct = distinct
+  }
+  return { ast, rest }
 }
 
 function parseTable(tokens: Token.Any[]) {
@@ -610,6 +625,39 @@ function parseWhereExpr(
         right,
       }
       trimUndefined(expr)
+    } else if (isWord(rest[0], 'in')) {
+      const inStr = remarkStr(rest[0], 'in')
+      rest = rest.slice(1)
+
+      const openBracketResult = parseSymbol(rest, 'open bracket after "in"')
+      if (openBracketResult.value !== '(') {
+        throw new Error(
+          `expected open bracket after "in", got ${JSON.stringify(rest[0])}`,
+        )
+      }
+      rest = openBracketResult.rest
+      rest = skipNewline(rest)
+
+      const selectResult = parseSelect(rest)
+      rest = selectResult.rest
+      const select = selectResult.ast
+
+      const closeBracketResult = parseSymbol(rest, 'close bracket after "in"')
+      if (closeBracketResult.value !== ')') {
+        throw new Error(
+          `expected close bracket after "in", got ${JSON.stringify(rest[0])}`,
+        )
+      }
+      rest = closeBracketResult.rest
+
+      expr = {
+        type: 'in',
+        inStr,
+        not,
+        expr: field,
+        select,
+      }
+      trimUndefined(expr)
     } else {
       const opResult = parseSymbol(
         rest,
@@ -625,7 +673,12 @@ function parseWhereExpr(
       rest = rightResult.rest
       const right = rightResult.value
 
-      expr = { type: 'compare', left: field, op, right }
+      expr = {
+        type: 'compare',
+        left: field,
+        op,
+        right,
+      }
     }
   }
 

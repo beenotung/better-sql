@@ -1696,6 +1696,64 @@ offset 20
       })
     })
 
+    context('nested select with "in" expression', () => {
+      it('should parse nested select with "in" expression', () => {
+        let query = `
+select post [
+  title
+] where author_id in (
+  select user [ id ]
+  where is_admin = 1
+)
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            single: false,
+            name: 'post',
+            fields: [{ type: 'column', name: 'title' }],
+            where: {
+              expr: {
+                type: 'in',
+                expr: 'author_id',
+                select: {
+                  type: 'select',
+                  table: {
+                    type: 'table',
+                    name: 'user',
+                    single: false,
+                    fields: [{ type: 'column', name: 'id' }],
+                    where: {
+                      expr: {
+                        type: 'compare',
+                        left: 'is_admin',
+                        op: '=',
+                        right: '1',
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.title
+from post
+where post.author_id in (
+  select
+    user.id
+  from user
+  where user.is_admin = 1
+)
+`)
+      })
+    })
+
     it('should parse "where", "group by", "order by", "limit", "offset" in any order', () => {
       let query = `
 select post [
