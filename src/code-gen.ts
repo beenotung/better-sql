@@ -74,6 +74,15 @@ export function generateSQL(ast: AST.Select): string {
         fromSQL += `
 ${join} ${subTable} ${on} ${subTableName}.${id} = ${tableName}.${subTableName}_${id}`
         processTable(field)
+      } else if (field.type === 'subQuery') {
+        let sql = generateSQL(field.select)
+        sql = addIndentation(sql)
+        sql = `(${sql})`
+        if (field.alias) {
+          const asStr = field.asStr || toCase('as')
+          sql += ` ${asStr} ${field.alias}`
+        }
+        selectFields.push(sql)
       }
     })
     if (where) {
@@ -280,19 +289,22 @@ function whereToSQL(
       if (expr.not) {
         sql += ' ' + expr.not
       }
-      sql += ' ' + inStr + ' ('
-      const subQuery = generateSQL(expr.select)
-      sql +=
-        subQuery
-          .split('\n')
-          .map(
-            (line, i, lines) =>
-              (i === 0 || i === lines.length - 1 ? '' : '  ') + line,
-          )
-          .join('\n') + ')'
+      let subQuery = generateSQL(expr.select)
+      subQuery = addIndentation(subQuery)
+      sql += ` ${inStr} (${subQuery})`
       return sql
     }
   }
+}
+
+function addIndentation(sql: string): string {
+  return sql
+    .split('\n')
+    .map(
+      (line, i, lines) =>
+        (i === 0 || i === lines.length - 1 ? '' : '  ') + line,
+    )
+    .join('\n')
 }
 
 function hasOr(where: AST.WhereExpr): boolean {

@@ -89,8 +89,21 @@ export function tokenize(text: string): Token.Any[] {
         const match = rest.match(wordRegex)
         if (match) {
           const value = match[0]
+          if (value.includes(')') && !value.includes('(')) {
+            const idx = value.indexOf(')')
+            const before = value.slice(0, idx)
+            const after = value.slice(idx + 1)
+            for (const value of [before, ')', after]) {
+              if (value === ')') {
+                tokens.push({ type: 'symbol', value })
+              } else if (value.length > 0) {
+                tokens.push({ type: 'word', value })
+              }
+            }
+          } else {
+            tokens.push({ type: 'word', value })
+          }
           rest = rest.slice(value.length)
-          tokens.push({ type: 'word', value })
           continue
         }
         console.error('unknown token:', { char, rest })
@@ -123,10 +136,16 @@ export namespace AST {
     limit?: string
     offset?: string
   }
-  export type Field = Column | Table
+  export type Field = Column | Table | SubQuery
   export type Column = {
     type: 'column'
     name: string
+    alias?: string
+    asStr?: string
+  }
+  export type SubQuery = {
+    type: 'subQuery'
+    select: Select
     alias?: string
     asStr?: string
   }
@@ -313,7 +332,7 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         if (field.type === 'table') {
           throw new Error(`expected "as" alias after table "${field.name}"`)
         }
-        const wordResult = parseWord(rest, `alias of column "${field.name}"`)
+        const wordResult = parseWord(rest, `alias of ${toFieldName(field)}`)
         rest = wordResult.rest
         field.alias = wordResult.value
         if (value !== 'as') {
@@ -323,6 +342,38 @@ function parseFields(tokens: Token.Any[], tableName: string) {
         continue
       }
       fields.push({ type: 'column', name: value })
+      continue
+    }
+
+    if (token.type === 'symbol' && token.value === '(') {
+      rest = rest.slice(1)
+      rest = skipNewline(rest)
+
+      const selectResult = parseSelect(rest)
+      rest = selectResult.rest
+      rest = skipNewline(rest)
+      const select = selectResult.ast
+
+      if (rest[0]?.type !== 'symbol' || rest[0].value !== ')') {
+        throw new Error(
+          `missing close bracket ")" after inline select sub-query`,
+        )
+      }
+      rest = rest.slice(1)
+      rest = skipNewline(rest)
+
+      let asStr: string | undefined
+      let alias: string | undefined
+      if (isWord(rest[0], 'as')) {
+        asStr = remarkStr(rest[0], 'as')
+        rest = rest.slice(1)
+        const wordResult = parseWord(rest, `alias of inline select sub-query`)
+        rest = wordResult.rest
+        alias = wordResult.value
+      }
+      const field: AST.SubQuery = { type: 'subQuery', alias, asStr, select }
+      trimUndefined(field)
+      fields.push(field)
       continue
     }
 
@@ -338,6 +389,13 @@ function parseFields(tokens: Token.Any[], tableName: string) {
       const field = popField(
         `missing relation table name in fields of table "${tableName}"`,
       )
+      if (field.type !== 'column') {
+        const open = (token as Token.Symbol).value
+        const close = getCloseBracket(open)
+        throw new Error(
+          `missing "select <table>" expression before "${open}fields${close}" expression`,
+        )
+      }
       const fieldsResult = parseFields(rest, field.name)
       rest = fieldsResult.rest
       const table: AST.Table = {
@@ -429,6 +487,16 @@ function parseFields(tokens: Token.Any[], tableName: string) {
   }
 }
 
+function toFieldName(field: AST.Field): string {
+  return field.type === 'table'
+    ? `table "${field.name}"`
+    : field.type === 'column'
+    ? `column "${field.name}"`
+    : `sub-query of table "${
+        field.select.table.alias || field.select.table.name
+      }"`
+}
+
 function parseWord(tokens: Token.Any[], name: string) {
   let rest = tokens
   for (;;) {
@@ -467,6 +535,17 @@ function parseSymbol(tokens: Token.Any[], name: string) {
 
 function isOpenBracket(token: Token.Any): boolean {
   return token.type === 'symbol' && (token.value === '{' || token.value === '[')
+}
+
+function getCloseBracket(openBracket: string): string {
+  switch (openBracket) {
+    case '[':
+      return ']'
+    case '{':
+      return '}'
+    default:
+      throw new Error(`unexpected openBracket ${JSON.stringify(openBracket)}`)
+  }
 }
 
 function parseOpenBracket(tokens: Token.Any[], name: string) {

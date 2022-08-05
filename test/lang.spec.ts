@@ -1957,6 +1957,66 @@ where post.author_id not in (
       })
     })
 
+    context('nested select sub-query', () => {
+      it('should parse inline select sub-query with column alias', () => {
+        let query = `
+select post [
+  id
+  title
+  (select user { nickname } where id = post.author_id) as by
+]
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [
+              { type: 'column', name: 'id' },
+              { type: 'column', name: 'title' },
+              {
+                type: 'subQuery',
+                alias: 'by',
+                select: {
+                  type: 'select',
+                  table: {
+                    type: 'table',
+                    name: 'user',
+                    single: true,
+                    fields: [{ type: 'column', name: 'nickname' }],
+                    where: {
+                      expr: {
+                        type: 'compare',
+                        left: 'id',
+                        op: '=',
+                        right: 'post.author_id',
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.id
+, post.title
+, (
+  select
+    user.nickname
+  from user
+  where user.id = post.author_id
+  limit 1
+) as by
+from post
+`)
+      })
+    })
+
     it('should parse "where", "group by", "order by", "limit", "offset" in any order', () => {
       let query = `
 select post [
