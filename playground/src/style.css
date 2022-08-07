@@ -1,0 +1,44 @@
+#noscriptMsg {
+  border: 1px solid red;
+  padding: 0.5rem;
+  display: inline-block;
+  margin: 0;
+}
+
+#demo-container {
+  display: flex;
+}
+
+legend {
+  padding: 0.25rem;
+}
+
+textarea {
+  width: 45vw;
+  height: fit-content;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+fieldset {
+  position: relative;
+}
+.space {
+  position: absolute;
+  top: 0;
+  white-space: pre-wrap;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+textarea {
+  background-color: black;
+  color: white;
+}
+
+code {
+  background-color: black;
+  color: white;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+}

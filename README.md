@@ -4,6 +4,8 @@ Generate sql query from a concise query syntax inspired from [EdgeDB](https://ww
 
 [![npm Package Version](https://img.shields.io/npm/v/better-sql.ts)](https://www.npmjs.com/package/better-sql.ts)
 
+Online Playground: https://better-sql.surge.sh
+
 <!-- [![npm Package Downloads](https://img.shields.io/npm/dm/better-sql.ts)](https://www.npmtrends.com/better-sql-lang) -->
 
 ## Supported Features

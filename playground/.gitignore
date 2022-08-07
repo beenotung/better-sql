@@ -1,0 +1,14 @@
+# npm
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# build output
+build/
+dist/
+*.tsbuildinfo
+
+# os
+.DS_Store
+Thumbs.db
