@@ -1,4 +1,7 @@
+import { queryToSQL } from 'better-sql.ts'
+
 declare var noscriptMsg: HTMLDivElement
+declare var errorMsg: HTMLDivElement
 
 declare var queryInput: HTMLTextAreaElement
 declare var sqlOutput: HTMLTextAreaElement
@@ -71,8 +74,12 @@ function checkEnter(event: KeyboardEvent) {
 }
 
 function updateTextAreaHeight() {
-  calcHeight(queryInput, querySpace)
-  calcHeight(sqlOutput, sqlSpace)
+  let height = Math.max(
+    calcHeight(queryInput, querySpace),
+    calcHeight(sqlOutput, sqlSpace),
+  )
+  queryInput.style.minHeight = height + 'px'
+  sqlOutput.style.minHeight = height + 'px'
 }
 
 function calcHeight(textarea: HTMLTextAreaElement, space: HTMLDivElement) {
@@ -80,11 +87,19 @@ function calcHeight(textarea: HTMLTextAreaElement, space: HTMLDivElement) {
   let style = getComputedStyle(textarea)
   space.style.fontSize = style.fontSize
   space.style.fontFamily = style.fontFamily
-  textarea.style.minHeight = space.getBoundingClientRect().height + 'px'
+  return space.getBoundingClientRect().height
 }
 
 function updateQuery() {
-  sqlOutput.value = queryInput.value
+  try {
+    let sql = queryToSQL(queryInput.value)
+    sqlOutput.value = sql
+    errorMsg.hidden = true
+  } catch (error) {
+    console.error('Failed to convert query into sql:', error)
+    errorMsg.hidden = false
+    errorMsg.textContent = String(error)
+  }
   updateTextAreaHeight()
 }
 

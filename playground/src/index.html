@@ -14,8 +14,8 @@
   <body>
     <h1>better-sql playground</h1>
     <h2>Live Demo</h2>
-    <p id="noscriptMsg">
-      This live demo require Javascript to work. Please enable it for this
+    <p id="noscriptMsg" class="error">
+      This live demo requires Javascript to work. Please enable it for this
       domain then refresh the page.
     </p>
     <div id="demo-container">
@@ -35,6 +35,7 @@
         <div id="sqlSpace" class="space"></div>
       </fieldset>
     </div>
+    <p id="errorMsg" class="error" hidden></p>
     <h2>Installation</h2>
     <code>npm install better-sql.ts</code>
     <h2>Links</h2>
