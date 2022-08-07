@@ -20,8 +20,7 @@ textarea {
   padding: 0.5rem;
   font-size: 1rem;
 }
-
-fieldset {
+#demo-container fieldset {
   position: relative;
 }
 .space {
@@ -42,4 +41,11 @@ code {
   color: white;
   padding: 0.5rem;
   border-radius: 0.25rem;
+}
+
+#links-container fieldset {
+  display: inline-block;
+}
+#links-container svg {
+  height:1.25rem;
 }
