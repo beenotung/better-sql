@@ -3,7 +3,12 @@
   "version": "0.0.1",
   "sideEffects": false,
   "description": "Generate sql query from a concise query syntax inspired from EdgeDB and GraphQL",
-  "keywords": [],
+  "keywords": [
+    "sql",
+    "syntax",
+    "code-generation",
+    "query-language"
+  ],
   "author": {
     "name": "Beeno Tung",
     "email": "aabbcc1241@yahoo.com.hk",
