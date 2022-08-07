@@ -1,6 +1,6 @@
 {
   "name": "better-sql.ts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "sideEffects": false,
   "description": "Generate sql query from a concise query syntax inspired from EdgeDB and GraphQL",
   "keywords": [
