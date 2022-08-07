@@ -13,7 +13,7 @@ Online Playground: https://better-sql.surge.sh
 - [x] automatically add table name on columns if not specified
 - [x] inner join with nested `table {fields}`
 - [x] left join with nested `table [fields]`
-- [x] nested select sub-query
+- [x] nested `select` sub-query
 - [x] `where` statement
 - [x] `having` statement
 - [x] `group by` statement
