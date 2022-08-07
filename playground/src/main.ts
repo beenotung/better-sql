@@ -71,13 +71,16 @@ function checkEnter(event: KeyboardEvent) {
 }
 
 function updateTextAreaHeight() {
-  querySpace.textContent = queryInput.value
-  querySpace.style.fontSize = getComputedStyle(queryInput).fontSize
-  queryInput.style.minHeight = querySpace.getBoundingClientRect().height + 'px'
+  calcHeight(queryInput, querySpace)
+  calcHeight(sqlOutput, sqlSpace)
+}
 
-  sqlSpace.textContent = sqlOutput.value
-  sqlSpace.style.fontSize = getComputedStyle(sqlOutput).fontSize
-  sqlOutput.style.minHeight = sqlSpace.getBoundingClientRect().height + 'px'
+function calcHeight(textarea: HTMLTextAreaElement, space: HTMLDivElement) {
+  space.textContent = textarea.value
+  let style = getComputedStyle(textarea)
+  space.style.fontSize = style.fontSize
+  space.style.fontFamily = style.fontFamily
+  textarea.style.minHeight = space.getBoundingClientRect().height + 'px'
 }
 
 function updateQuery() {
