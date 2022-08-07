@@ -12,15 +12,15 @@ A query in better-sql-lang:
 
 ```graphql
 select post [
-	id as post_id
-	title
-	author_id
-	user as author {
+  id as post_id
+  title
+  author_id
+  user as author {
     nickname
     avatar
   } where delete_time is null
-	type_id
-	post_type { name as type }
+  type_id
+  post_type { name as type }
 ] where created_at >= :since and delete_time is null
 ```
 
