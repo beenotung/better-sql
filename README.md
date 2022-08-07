@@ -21,6 +21,24 @@ Online Playground: https://better-sql.surge.sh
 - [x] `order by` statement
 - [x] `limit` and `offset` statement
 
+## TypeScript Signature
+
+```typescript
+export function queryToSQL(query: string): string
+```
+
+## Usage
+
+```typescript
+import { queryToSQL } from 'better-sql.ts'
+import { db } from './db'
+
+let keyword = '%script%'
+let query = 'select post [...] where title like :keyword'
+let sql = queryToSQL(query)
+let result = db.query(sql, { keyword })
+```
+
 ## Example
 
 <table>
