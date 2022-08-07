@@ -3,11 +3,15 @@ import { queryToSQL } from 'better-sql.ts'
 declare let noscriptMsg: HTMLDivElement
 declare let errorMsg: HTMLDivElement
 
+declare let loadExampleBtn: HTMLButtonElement
+
 declare let queryInput: HTMLTextAreaElement
 declare let sqlOutput: HTMLTextAreaElement
 
 declare let querySpace: HTMLDivElement
 declare let sqlSpace: HTMLDivElement
+
+loadExampleBtn.addEventListener('click', loadExample)
 
 queryInput.addEventListener('input', updateQuery)
 
@@ -103,23 +107,49 @@ function updateQuery() {
   updateTextAreaHeight()
 }
 
-const sampleQuery = /* sql */ `
+const sampleQueries = [
+  /* sql */ `
 select post [
   id as post_id
   title
   author_id
-  user as author {
-    nickname
-    avatar
-  } where delete_time is null
+  user as author { nickname, avatar } where delete_time is null
   type_id
-  post_type { name as type }
-] where created_at >= :since and delete_time is null
-`.trim()
+  post_type {
+    name as type
+    is_hidden
+  } where is_hidden = 0 or user.is_admin = 1
+] where created_at >= :since
+    and delete_time is null
+    and title like :keyword
+  order by created_at desc
+  limit 25
+`,
+  /* sql */ `
+select reply [
+  post {
+    title
+    user as author {
+      nickname as author
+    }
+  }
+  user as guest {
+    nickname as vistor
+  }
+  comment
+]
+`,
+].map((query) => query.trim())
 
-if (queryInput.value === '') {
-  queryInput.value = sampleQuery
+function loadExample() {
+  for (const query of sampleQueries) {
+    if (queryInput.value === query) {
+      continue
+    }
+    queryInput.value = query
+    updateQuery()
+    break
+  }
 }
-updateQuery()
 
 noscriptMsg.remove()
