@@ -6,6 +6,10 @@ type Condition = {
 }
 
 export function generateSQL(ast: AST.Select): string {
+  return toSQL(ast)
+}
+
+function toSQL(ast: AST.Select): string {
   const table = ast.table
   const selectFields: string[] = []
 
@@ -75,7 +79,7 @@ export function generateSQL(ast: AST.Select): string {
 ${join} ${subTable} ${on} ${subTableName}.${id} = ${tableName}.${subTableName}_${id}`
         processTable(field)
       } else if (field.type === 'subQuery') {
-        let sql = generateSQL(field.select)
+        let sql = toSQL(field.select)
         sql = addIndentation(sql)
         sql = `(${sql})`
         if (field.alias) {
@@ -289,7 +293,7 @@ function whereToSQL(
       if (expr.not) {
         sql += ' ' + expr.not
       }
-      let subQuery = generateSQL(expr.select)
+      let subQuery = toSQL(expr.select)
       subQuery = addIndentation(subQuery)
       sql += ` ${inStr} (${subQuery})`
       return sql
