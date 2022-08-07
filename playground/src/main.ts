@@ -1,35 +1,35 @@
 import { queryToSQL } from 'better-sql.ts'
 
-declare var noscriptMsg: HTMLDivElement
-declare var errorMsg: HTMLDivElement
+declare let noscriptMsg: HTMLDivElement
+declare let errorMsg: HTMLDivElement
 
-declare var queryInput: HTMLTextAreaElement
-declare var sqlOutput: HTMLTextAreaElement
+declare let queryInput: HTMLTextAreaElement
+declare let sqlOutput: HTMLTextAreaElement
 
-declare var querySpace: HTMLDivElement
-declare var sqlSpace: HTMLDivElement
+declare let querySpace: HTMLDivElement
+declare let sqlSpace: HTMLDivElement
 
 queryInput.addEventListener('input', updateQuery)
 
 queryInput.addEventListener('keypress', checkBracket)
 queryInput.addEventListener('keypress', checkEnter)
 
-let brackets: Record<string, string> = {
+const brackets: Record<string, string> = {
   '[': ']',
   '{': '}',
   '(': ')',
 }
 
 function checkBracket(event: KeyboardEvent) {
-  let open = event.key
-  let close = brackets[open]
+  const open = event.key
+  const close = brackets[open]
   if (!close) return
-  let start = queryInput.selectionStart
-  let end = queryInput.selectionEnd
+  const start = queryInput.selectionStart
+  const end = queryInput.selectionEnd
   if (start !== end) return
   let text = queryInput.value
-  let before = text.slice(0, start)
-  let after = text.slice(start)
+  const before = text.slice(0, start)
+  const after = text.slice(start)
   text = before + open + close + after
   queryInput.value = text
   queryInput.selectionStart = start + 1
@@ -41,20 +41,20 @@ function checkBracket(event: KeyboardEvent) {
 function checkEnter(event: KeyboardEvent) {
   if (event.key !== 'Enter') return
 
-  let start = queryInput.selectionStart
-  let end = queryInput.selectionEnd
+  const start = queryInput.selectionStart
+  const end = queryInput.selectionEnd
   if (start !== end) return
 
   let text = queryInput.value
-  let before = text.slice(0, start)
+  const before = text.slice(0, start)
 
-  let open = before[before.length - 1]
-  let isOpen = open in brackets
+  const open = before[before.length - 1]
+  const isOpen = open in brackets
 
-  let after = text.slice(start)
-  let lastLine = before.split('\n').pop() || ''
+  const after = text.slice(start)
+  const lastLine = before.split('\n').pop() || ''
   let indent = lastLine.match(/ */)?.[0] || ''
-  let outerIndent = indent
+  const outerIndent = indent
   if (isOpen) {
     indent += '  '
   }
@@ -74,9 +74,9 @@ function checkEnter(event: KeyboardEvent) {
 }
 
 function updateTextAreaHeight() {
-  let height = Math.max(
+  const height = Math.max(
     calcHeight(queryInput, querySpace),
-    calcHeight(sqlOutput, sqlSpace),
+    calcHeight(sqlOutput, sqlSpace)
   )
   queryInput.style.minHeight = height + 'px'
   sqlOutput.style.minHeight = height + 'px'
@@ -84,7 +84,7 @@ function updateTextAreaHeight() {
 
 function calcHeight(textarea: HTMLTextAreaElement, space: HTMLDivElement) {
   space.textContent = textarea.value
-  let style = getComputedStyle(textarea)
+  const style = getComputedStyle(textarea)
   space.style.fontSize = style.fontSize
   space.style.fontFamily = style.fontFamily
   return space.getBoundingClientRect().height
@@ -92,7 +92,7 @@ function calcHeight(textarea: HTMLTextAreaElement, space: HTMLDivElement) {
 
 function updateQuery() {
   try {
-    let sql = queryToSQL(queryInput.value)
+    const sql = queryToSQL(queryInput.value)
     sqlOutput.value = sql
     errorMsg.hidden = true
   } catch (error) {
@@ -103,7 +103,7 @@ function updateQuery() {
   updateTextAreaHeight()
 }
 
-let sampleQuery = /* sql */ `
+const sampleQuery = /* sql */ `
 select post [
   id as post_id
   title

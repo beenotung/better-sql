@@ -1,4 +1,5 @@
 dist/
+playground/build/
 pnpm-lock.yaml
 *.macro.ts
 src/assets/*

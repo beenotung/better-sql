@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { generateSQL } from '../src/code-gen'
 import { decode } from '../src/parse'
 
-let text = /* sql */`
+let text = /* sql */ `
 select post [
   id as post_id
   title
