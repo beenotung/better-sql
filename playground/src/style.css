@@ -45,6 +45,7 @@ code {
   color: white;
   padding: 0.5rem;
   border-radius: 0.25rem;
+  display: inline-block;
 }
 
 #links-container fieldset {

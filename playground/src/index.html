@@ -38,6 +38,15 @@
     <p id="errorMsg" class="error" hidden></p>
     <h2>Installation</h2>
     <code>npm install better-sql.ts</code>
+    <h2>Usage</h2>
+    <pre><code>import { queryToSQL } from 'better-sql.ts'
+import { db } from './db'
+
+let keyword = '%script%'
+let query = 'select post [...] where title like :keyword'
+let sql = queryToSQL(query)
+let result = db.query(sql, { keyword })
+</code></pre>
     <h2>Links</h2>
     <div id="links-container">
       <fieldset>
