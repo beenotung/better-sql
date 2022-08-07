@@ -136,7 +136,7 @@ ${fromSQL}
       sql += conditions
         .map(condition => {
           let sql = whereToSQL(condition.tableName, condition.expr, context)
-          if (hasOr(condition.expr)) {
+          if (needParentheses(condition.expr)) {
             sql = `(${sql})`
           }
           return sql
@@ -237,7 +237,7 @@ function shouldAddTablePrefix(field: string): boolean {
 
 function whereToSQL(
   tableName: string,
-  expr: AST.WhereExpr | string,
+  expr: AST.WhereValueExpr,
   context: {
     toCase: (word: string) => string
   },
@@ -298,6 +298,11 @@ function whereToSQL(
       sql += ` ${inStr} (${subQuery})`
       return sql
     }
+    case 'select': {
+      let sql = toSQL(expr)
+      sql = addIndentation(sql)
+      return sql
+    }
   }
 }
 
@@ -311,19 +316,31 @@ function addIndentation(sql: string): string {
     .join('\n')
 }
 
-function hasOr(where: AST.WhereExpr): boolean {
+function needParentheses(expr: AST.WhereValueExpr): boolean {
   for (;;) {
-    switch (where.type) {
+    if (typeof expr === 'string') {
+      return false
+    }
+    switch (expr.type) {
       case 'not':
-      case 'parenthesis':
-        where = where.expr
+        expr = expr.expr
         continue
       case 'compare':
         return (
-          where.op.toLowerCase() === 'or' ||
-          (typeof where.left !== 'string' && hasOr(where.left)) ||
-          (typeof where.right !== 'string' && hasOr(where.right))
+          expr.op.toLowerCase() === 'or' ||
+          needParentheses(expr.left) ||
+          needParentheses(expr.right)
         )
+      case 'parenthesis':
+      case 'between':
+      case 'in':
+        return false
+      case 'select':
+        return true
+      default: {
+        const _expr: never = expr
+        throw new Error('Unexpected expression: ' + JSON.stringify(_expr))
+      }
     }
   }
 }

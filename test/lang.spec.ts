@@ -2015,6 +2015,64 @@ select
 from post
 `)
       })
+
+      it('should parse select sub-query in where condition', () => {
+        let query = `
+select post [
+  title
+] where author_id = (select user {id} where username = :username)
+`
+        let ast = decode(query)
+        expectAST(ast, {
+          type: 'select',
+          table: {
+            type: 'table',
+            name: 'post',
+            single: false,
+            fields: [{ type: 'column', name: 'title' }],
+            where: {
+              expr: {
+                type: 'compare',
+                left: 'author_id',
+                op: '=',
+                right: {
+                  type: 'parenthesis',
+                  expr: {
+                    type: 'select',
+                    table: {
+                      type: 'table',
+                      name: 'user',
+                      single: true,
+                      fields: [{ type: 'column', name: 'id' }],
+                      where: {
+                        expr: {
+                          type: 'compare',
+                          left: 'username',
+                          op: '=',
+                          right: ':username',
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })
+        let sql = generateSQL(ast)
+        expect(sql).to.equals(/* sql */ `
+select
+  post.title
+from post
+where post.author_id = (
+  select
+    user.id
+  from user
+  where user.username = :username
+  limit 1
+)
+`)
+      })
     })
 
     it('should parse "where", "group by", "order by", "limit", "offset" in any order', () => {

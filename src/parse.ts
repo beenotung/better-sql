@@ -160,9 +160,9 @@ export namespace AST {
   export type WhereExpr =
     | {
         type: 'compare'
-        left: WhereExpr | string
+        left: WhereValueExpr
         op: string
-        right: WhereExpr | string
+        right: WhereValueExpr
       }
     | {
         type: 'not'
@@ -171,12 +171,12 @@ export namespace AST {
       }
     | {
         type: 'parenthesis'
-        expr: WhereExpr
+        expr: WhereValueExpr
       }
     | {
         type: 'between'
         betweenStr?: string
-        expr: WhereExpr | string
+        expr: WhereValueExpr
         not?: string
         andStr?: string
         left: string
@@ -186,9 +186,10 @@ export namespace AST {
         type: 'in'
         inStr?: string
         not?: string
-        expr: WhereExpr | string
+        expr: WhereValueExpr
         select: Select
       }
+  export type WhereValueExpr = WhereExpr | string | Select
   export type GroupBy = {
     groupByStr?: string
     fields: string[]
@@ -657,10 +658,10 @@ function parseWhereExpr(
     rest = rest.slice(1)
     expr = { type: 'parenthesis', expr: result.expr }
   } else {
-    const leftResult = parseWord(
-      rest,
-      `left-hand side of where statement after table "${tableName}"`,
-    )
+    const leftResult = parseWhereValueExpr(rest, {
+      tableName,
+      name: `left-hand side of where statement after table "${tableName}"`,
+    })
     rest = leftResult.rest
     const field = leftResult.value
 
@@ -758,10 +759,10 @@ function parseWhereExpr(
         op = 'not ' + op
       }
 
-      const rightResult = parseWord(
-        rest,
-        `right-hand side of where statement after table "${tableName}"`,
-      )
+      const rightResult = parseWhereValueExpr(rest, {
+        tableName,
+        name: `right-hand side of where statement after table "${tableName}"`,
+      })
       rest = rightResult.rest
       const right = rightResult.value
 
@@ -945,4 +946,34 @@ function trimUndefined<T extends object>(ast: T) {
       delete ast[key]
     }
   }
+}
+
+function parseWhereValueExpr(
+  tokens: Token.Any[],
+  options: { tableName: string; name: string },
+): { rest: Token.Any[]; value: AST.WhereValueExpr } {
+  const { tableName, name } = options
+  let rest = skipNewline(tokens)
+
+  if (isWord(rest[0], 'select')) {
+    const result = parseSelect(rest)
+    rest = result.rest
+    return { rest, value: result.ast }
+  }
+
+  if (isSymbol(rest[0], '(')) {
+    rest = rest.slice(1)
+    const result = parseWhereValueExpr(rest, options)
+    rest = result.rest
+    rest = skipNewline(rest)
+    if (!isSymbol(rest[0], ')')) {
+      throw new Error(
+        `missing close parenthesis in where statement after table "${tableName}"`,
+      )
+    }
+    rest = rest.slice(1)
+    return { rest, value: { type: 'parenthesis', expr: result.value } }
+  }
+
+  return parseWord(rest, name)
 }
