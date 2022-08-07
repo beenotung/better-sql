@@ -8,9 +8,13 @@ Generate sql query from a concise query syntax inspired from [EdgeDB](https://ww
 
 ## Example
 
-A query in better-sql-lang:
+<table>
+<tbody>
+<tr>
+<td>
+A query in better-sql:
 
-```graphql
+```sql
 select post [
   id as post_id
   title
@@ -21,10 +25,16 @@ select post [
   } where delete_time is null
   type_id
   post_type { name as type }
-] where created_at >= :since and delete_time is null
+]
+where created_at >= :since
+  and delete_time is null
+
+
 ```
 
-is converted into sql as below:
+</td>
+<td>
+is converted into formatted sql as below:
 
 ```sql
 select
@@ -42,5 +52,10 @@ where author.delete_time is null
   and post.created_at >= :since
   and post.delete_time is null
 ```
+
+</td>
+</tr>
+</tbody>
+</table>
 
 Details refers to [sample.ts](./test/sample.ts) and [lang.spec.ts](./test/lang.spec.ts)
