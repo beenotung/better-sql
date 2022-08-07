@@ -6,6 +6,19 @@ Generate sql query from a concise query syntax inspired from [EdgeDB](https://ww
 
 <!-- [![npm Package Downloads](https://img.shields.io/npm/dm/better-sql.ts)](https://www.npmtrends.com/better-sql-lang) -->
 
+## Supported Features
+
+- [x] automatically add table name on columns if not specified
+- [x] inner join with nested `table {fields}`
+- [x] left join with nested `table [fields]`
+- [x] nested select sub-query
+- [x] `where` statement
+- [x] `having` statement
+- [x] `group by` statement
+- [x] aggregate function, e.g. `sum(score)`
+- [x] `order by` statement
+- [x] `limit` and `offset` statement
+
 ## Example
 
 <table>
