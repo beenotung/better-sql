@@ -10,6 +10,7 @@ Online Playground: https://better-sql.surge.sh
 
 ## Supported Features
 
+- [x] output typical sql query, compatible with mysql, postgres, sqlite, e.t.c.
 - [x] automatically add table name on columns if not specified
 - [x] inner join with nested `table {fields}`
 - [x] left join with nested `table [fields]`
