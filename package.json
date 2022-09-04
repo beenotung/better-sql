@@ -1,6 +1,6 @@
 {
   "name": "better-sql.ts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "sideEffects": false,
   "description": "Generate sql query from a concise query syntax inspired from EdgeDB and GraphQL",
   "keywords": [
@@ -51,8 +51,7 @@
     "report": "run-s report:update report:open",
     "prepublishOnly": "run-s test build"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/chai": "^4.3.1",
     "@types/mocha": "8",
