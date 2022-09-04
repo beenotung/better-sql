@@ -34,8 +34,6 @@
   ],
   "scripts": {
     "build": "run-s clean tsc",
-    "prepare": "run-p prepare:*",
-    "prepare:tslib": "rimraf node_modules/@beenotung/tslib/index.*",
     "clean": "rimraf dist",
     "format": "run-s format:*",
     "format:prettier": "prettier --write .",
@@ -54,7 +52,6 @@
     "prepublishOnly": "run-s test build"
   },
   "dependencies": {
-    "@beenotung/tslib": "^20.1.3"
   },
   "devDependencies": {
     "@types/chai": "^4.3.1",
